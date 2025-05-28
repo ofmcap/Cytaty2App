@@ -13,9 +13,13 @@ struct EditQuoteView: View {
     @State private var tagInput: String = ""
     @State private var tags: [String]
     
-    init(book: Book, quote: Quote) {
+    // Dodajemy callback do powiadamiania o aktualizacji
+    var onUpdate: (() -> Void)?
+    
+    init(book: Book, quote: Quote, onUpdate: (() -> Void)? = nil) {
         self.book = book
         self.quote = quote
+        self.onUpdate = onUpdate
         
         _content = State(initialValue: quote.content)
         _page = State(initialValue: quote.page != nil ? "\(quote.page!)" : "")
@@ -41,6 +45,7 @@ struct EditQuoteView: View {
                 Section(header: Text("Tagi")) {
                     HStack {
                         TextField("Dodaj tag", text: $tagInput)
+                            .submitLabel(.search)
                         
                         Button(action: addTag) {
                             Image(systemName: "plus.circle.fill")
@@ -112,6 +117,10 @@ struct EditQuoteView: View {
         )
         
         viewModel.updateQuote(updatedQuote, in: book)
+        
+        // Wywołanie callbacku aktualizacji
+        onUpdate?()
+        
         dismiss()
     }
 }

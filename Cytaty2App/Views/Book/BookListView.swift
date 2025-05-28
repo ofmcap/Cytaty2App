@@ -4,6 +4,8 @@ struct BookListView: View {
     @EnvironmentObject var viewModel: QuoteViewModel
     @State private var showingSearchBooks = false
     @State private var searchText = ""
+    @Environment(\.selectedTabSubject) var tabSubject
+    @Environment(\.dismiss) private var dismiss
     
     // Filtrowane książki na podstawie wyszukiwania
     private var filteredBooks: [Book] {
@@ -55,7 +57,6 @@ struct BookListView: View {
                 .listStyle(InsetGroupedListStyle())
             }
         }
-        .navigationTitle("Moje książki")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button(action: {
@@ -67,6 +68,12 @@ struct BookListView: View {
         }
         .sheet(isPresented: $showingSearchBooks) {
             SearchBooksView()
+        }
+        .onReceive(tabSubject.$selectedTab) { tab in
+            if tab == 0 {
+                // Reset nawigacji dla zakładki książek
+                dismiss()
+            }
         }
     }
 }

@@ -4,6 +4,7 @@ struct QuoteDetailView: View {
     @EnvironmentObject var viewModel: QuoteViewModel
     @Environment(\.presentationMode) var presentationMode
     @State private var showingEditSheet = false
+    @State private var refreshToggle = false // Dodajemy stan do wymuszenia odświeżenia
     
     let quote: Quote
     let book: Book
@@ -179,11 +180,17 @@ struct QuoteDetailView: View {
             }
         }
         .sheet(isPresented: $showingEditSheet) {
-            EditQuoteView(book: currentBook, quote: currentQuote)
+            EditQuoteView(
+                book: currentBook,
+                quote: currentQuote,
+                onUpdate: {
+                    // Wymuszamy odświeżenie widoku
+                    refreshToggle.toggle()
+                }
+            )
         }
-        .onAppear {
-            // To wymusza odświeżenie widoku
-        }
+        // Dodajemy id do wymuszenia odświeżenia widoku
+        .id(refreshToggle)
     }
     
     private func formatDate(_ date: Date) -> String {

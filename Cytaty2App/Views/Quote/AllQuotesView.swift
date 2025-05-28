@@ -4,8 +4,11 @@ struct AllQuotesView: View {
     @EnvironmentObject var viewModel: QuoteViewModel
     @State private var searchText = ""
     @State private var selectedTag: String?
-    @State private var showingAddQuoteSheet = false // Nowy stan
-    @State private var selectedBook: Book? // Przechowuje wybraną książkę do dodania cytatu
+    @State private var showingAddQuoteSheet = false
+    @State private var selectedBook: Book?
+    @State private var refreshToggle = false // Stan do wymuszenia odświeżenia
+    @Environment(\.selectedTabSubject) var tabSubject
+    @Environment(\.dismiss) private var dismiss
     
     var allQuotes: [QuoteWithBook] {
         var quotes: [QuoteWithBook] = []
@@ -90,7 +93,7 @@ struct AllQuotesView: View {
             }
         }
         .navigationTitle("Wszystkie cytaty")
-        .toolbar { // Dodanie przycisku w pasku narzędzi
+        .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button(action: {
                     if !viewModel.books.isEmpty {
@@ -121,14 +124,6 @@ struct AllQuotesView: View {
         } message: {
             Text("Dodaj najpierw książkę, aby móc dodać cytat.")
         }
-       // .onChange(of: selectedBook) { newBook in
-       //     // Gdy książka zostanie wybrana, pozostawiamy arkusz otwarty
-       //     if newBook != nil {
-        //        showingAddQuoteSheet = true
-        //    }
-       // }
-
-        // Nowy kod zgodny z iOS 17:
         #if compiler(>=5.9) && canImport(SwiftUI)
         .onChange(of: selectedBook) { oldBook, newBook in
             // Gdy książka zostanie wybrana, pozostawiamy arkusz otwarty
@@ -144,9 +139,15 @@ struct AllQuotesView: View {
             }
         }
         #endif
-
-
-
+        // Dodajemy .id zależny od refreshToggle, aby wymusić odświeżenie listy
+        .id(refreshToggle)
+        // Dodajemy obsługę zdarzeń dla resetowania stosu nawigacji
+        .onReceive(tabSubject.$selectedTab) { tab in
+            if tab == 1 {
+                // Reset nawigacji dla zakładki cytatów
+                dismiss()
+            }
+        }
     }
     
     private var emptyQuotesView: some View {
@@ -190,6 +191,10 @@ struct AllQuotesView: View {
             ForEach(filteredQuotes) { quoteWithBook in
                 NavigationLink(destination:
                     QuoteDetailView(quote: quoteWithBook.quote, book: quoteWithBook.book)
+                        .onDisappear {
+                            // Odświeżamy listę po powrocie z widoku szczegółów
+                            refreshToggle.toggle()
+                        }
                 ) {
                     QuoteListItemView(quoteWithBook: quoteWithBook)
                 }
@@ -199,7 +204,7 @@ struct AllQuotesView: View {
     }
 }
 
-// Nowy widok do wyboru książki przed dodaniem cytatu
+// Widok wyboru książki
 struct BookSelectionView: View {
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var viewModel: QuoteViewModel

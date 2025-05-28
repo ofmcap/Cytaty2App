@@ -1,21 +1,20 @@
 import SwiftUI
 
-
 struct BookDetailView: View {
     @EnvironmentObject var viewModel: QuoteViewModel
     let book: Book
     @State private var showingAddQuote = false
-    
+
     // Funkcja pomocnicza do znajdowania aktualnej książki z ViewModel
     private var currentBook: Book {
         return viewModel.books.first { $0.id == book.id } ?? book
     }
-    
+
     var body: some View {
         VStack {
             BookHeaderView(book: currentBook)
                 .padding()
-            
+
             if currentBook.quotes.isEmpty {
                 EmptyQuoteView()
             } else {
@@ -39,10 +38,9 @@ struct BookDetailView: View {
     }
 }
 
-
 struct BookHeaderView: View {
     let book: Book
-    
+
     var body: some View {
         HStack(spacing: 20) {
             if let coverURL = book.coverURL, let url = URL(string: coverURL) {
@@ -71,22 +69,22 @@ struct BookHeaderView: View {
                     .frame(width: 100, height: 140)
                     .foregroundColor(.gray)
             }
-            
+
             VStack(alignment: .leading, spacing: 8) {
                 Text(book.title)
                     .font(.title2)
                     .fontWeight(.bold)
-                
+
                 Text(book.author)
                     .font(.headline)
                     .foregroundColor(.secondary)
-                
+
                 if let publishYear = book.publishYear {
                     Text("Rok wydania: \(publishYear)")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
-                
+
                 if let isbn = book.isbn {
                     Text("ISBN: \(isbn)")
                         .font(.caption)
@@ -97,18 +95,17 @@ struct BookHeaderView: View {
     }
 }
 
-
 struct EmptyQuoteView: View {
     var body: some View {
         VStack(spacing: 20) {
             Image(systemName: "text.quote")
                 .font(.system(size: 60))
                 .foregroundColor(.gray)
-            
+
             Text("Brak cytatów")
                 .font(.title2)
                 .foregroundColor(.gray)
-            
+
             Text("Dodaj pierwszy cytat z tej książki")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
@@ -121,6 +118,7 @@ struct QuoteListView: View {
     @EnvironmentObject var viewModel: QuoteViewModel
     let book: Book
     @State private var editingQuote: Quote?
+    @State private var refreshToggle = false // Dodajemy stan do wymuszenia odświeżenia
     
     // Funkcja pomocnicza do znajdowania aktualnej książki z ViewModel
     private var currentBook: Book {
@@ -140,6 +138,7 @@ struct QuoteListView: View {
                         
                         Button(role: .destructive, action: {
                             viewModel.deleteQuote(quote, from: currentBook)
+                            refreshToggle.toggle() // Odświeżenie widoku po usunięciu
                         }) {
                             Label("Usuń", systemImage: "trash")
                         }
@@ -148,8 +147,16 @@ struct QuoteListView: View {
         }
         .listStyle(InsetGroupedListStyle())
         .sheet(item: $editingQuote) { quote in
-            EditQuoteView(book: currentBook, quote: quote)
+            EditQuoteView(
+                book: currentBook,
+                quote: quote,
+                onUpdate: {
+                    // Wymuszamy odświeżenie widoku
+                    refreshToggle.toggle()
+                }
+            )
         }
+        // Dodajemy id do wymuszenia odświeżenia widoku
+        .id(refreshToggle)
     }
 }
-

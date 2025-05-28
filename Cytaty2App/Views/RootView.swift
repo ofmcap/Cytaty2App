@@ -3,60 +3,80 @@ import SwiftUI
 struct RootView: View {
     @EnvironmentObject var viewModel: QuoteViewModel
     @State private var selectedTab: Int = 0
-    @State private var booksNavigationId = UUID()
-    @State private var quotesNavigationId = UUID()
-    @State private var settingsNavigationId = UUID()
+    @State private var previousTab: Int = 0
+    @State private var tabSelectSubject = TabSelectSubject()
     
     var body: some View {
         TabView(selection: $selectedTab) {
-            NavigationView {
+            NavigationStack {
                 BookListView()
+                    .navigationTitle("Moje książki")
             }
-            .id(booksNavigationId) // Unikalny ID dla resetu stosu nawigacji
             .tabItem {
                 Label("Książki", systemImage: "book")
             }
             .tag(0)
             
-            NavigationView {
+            NavigationStack {
                 AllQuotesView()
+                    .navigationTitle("Wszystkie cytaty")
             }
-            .id(quotesNavigationId) // Unikalny ID dla resetu stosu nawigacji
             .tabItem {
                 Label("Cytaty", systemImage: "quote.bubble")
             }
             .tag(1)
             
-            NavigationView {
+            NavigationStack {
                 SettingsView()
+                    .navigationTitle("Ustawienia")
             }
-            .id(settingsNavigationId)
             .tabItem {
                 Label("Ustawienia", systemImage: "gear")
             }
             .tag(2)
         }
         #if compiler(>=5.9) && canImport(SwiftUI)
-        .onChange(of: selectedTab) { oldTab, newTab in
-            if oldTab == newTab {
-                // Jeśli kliknięto tę samą zakładkę, zresetuj stos nawigacji
-                resetNavigationStack(for: newTab)
+        .onChange(of: selectedTab) { oldValue, newValue in
+            // Jeśli kliknięto tę samą zakładkę, zresetuj stos nawigacyjny
+            if oldValue == newValue {
+                handleTabTap(tab: newValue)
             }
+            previousTab = newValue
         }
         #else
-        .onChange(of: selectedTab) { newTab in
-            resetNavigationStack(for: newTab)
+        .onChange(of: selectedTab) { newValue in
+            // Jeśli kliknięto tę samą zakładkę, zresetuj stos nawigacyjny
+            if previousTab == newValue {
+                handleTabTap(tab: newValue)
+            }
+            previousTab = newValue
         }
         #endif
+        .environment(\.selectedTabSubject, tabSelectSubject)
     }
     
-    private func resetNavigationStack(for tab: Int) {
-        if tab == 0 {
-            booksNavigationId = UUID()
-        } else if tab == 1 {
-            quotesNavigationId = UUID()
-        } else if tab == 2 {
-            settingsNavigationId = UUID()
-        }
+    private func handleTabTap(tab: Int) {
+        tabSelectSubject.send(tab)
+    }
+}
+
+// Klasa do komunikacji między zakładkami
+class TabSelectSubject: ObservableObject {
+    @Published var selectedTab: Int?
+    
+    func send(_ tab: Int) {
+        selectedTab = tab
+    }
+}
+
+// Klucz środowiskowy dla przekazywania TabSelectSubject
+struct SelectedTabSubjectKey: EnvironmentKey {
+    static let defaultValue = TabSelectSubject()
+}
+
+extension EnvironmentValues {
+    var selectedTabSubject: TabSelectSubject {
+        get { self[SelectedTabSubjectKey.self] }
+        set { self[SelectedTabSubjectKey.self] = newValue }
     }
 }
