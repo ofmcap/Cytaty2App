@@ -12,9 +12,32 @@ struct EditQuoteView: View {
     @State private var chapter: String
     @State private var tagInput: String = ""
     @State private var tags: [String]
+    @State private var showingSuggestions = false
     
     // Dodajemy callback do powiadamiania o aktualizacji
     var onUpdate: (() -> Void)?
+    
+    // Wszystkie istniejące tagi w aplikacji
+    private var allExistingTags: [String] {
+        var allTags = Set<String>()
+        for book in viewModel.books {
+            for quote in book.quotes {
+                allTags.formUnion(quote.tags)
+            }
+        }
+        return Array(allTags).sorted()
+    }
+    
+    // Filtrowane sugestie tagów
+    private var tagSuggestions: [String] {
+        if tagInput.isEmpty {
+            return []
+        }
+        
+        return allExistingTags.filter { tag in
+            tag.localizedCaseInsensitiveContains(tagInput) && !tags.contains(tag)
+        }
+    }
     
     init(book: Book, quote: Quote, onUpdate: (() -> Void)? = nil) {
         self.book = book
@@ -43,38 +66,77 @@ struct EditQuoteView: View {
                 }
                 
                 Section(header: Text("Tagi")) {
-                    HStack {
-                        TextField("Dodaj tag", text: $tagInput)
-                            .submitLabel(.search)
-                        
-                        Button(action: addTag) {
-                            Image(systemName: "plus.circle.fill")
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            TextField("Dodaj tag", text: $tagInput)
+                                .submitLabel(.done)
+                                .onSubmit {
+                                    addTag()
+                                }
+                                .onChange(of: tagInput) { _, newValue in
+                                    showingSuggestions = !newValue.isEmpty && !tagSuggestions.isEmpty
+                                }
+
+                            
+                            Button(action: addTag) {
+                                Image(systemName: "plus.circle.fill")
+                            }
+                            .disabled(tagInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         }
-                        .disabled(tagInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    }
-                    
-                    if !tags.isEmpty {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack {
-                                ForEach(tags, id: \.self) { tag in
+                        
+                        // Sugestie tagów
+                        if showingSuggestions && !tagSuggestions.isEmpty {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Sugestie:")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                
+                                ScrollView(.horizontal, showsIndicators: false) {
                                     HStack {
-                                        Text(tag)
-                                        
-                                        Button(action: {
-                                            tags.removeAll { $0 == tag }
-                                        }) {
-                                            Image(systemName: "xmark.circle.fill")
-                                                .font(.caption)
+                                        ForEach(tagSuggestions.prefix(5), id: \.self) { suggestion in
+                                            Button(action: {
+                                                tagInput = suggestion
+                                                addTag()
+                                            }) {
+                                                Text(suggestion)
+                                                    .font(.caption)
+                                                    .padding(.horizontal, 8)
+                                                    .padding(.vertical, 4)
+                                                    .background(Color.blue.opacity(0.1))
+                                                    .foregroundColor(.blue)
+                                                    .cornerRadius(12)
+                                            }
                                         }
                                     }
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .background(Color.blue.opacity(0.1))
-                                    .foregroundColor(.blue)
-                                    .cornerRadius(8)
                                 }
                             }
-                            .padding(.vertical, 4)
+                            .padding(.top, 4)
+                        }
+                        
+                        // Dodane tagi
+                        if !tags.isEmpty {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack {
+                                    ForEach(tags, id: \.self) { tag in
+                                        HStack {
+                                            Text(tag)
+                                            
+                                            Button(action: {
+                                                tags.removeAll { $0 == tag }
+                                            }) {
+                                                Image(systemName: "xmark.circle.fill")
+                                                    .font(.caption)
+                                            }
+                                        }
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(Color.blue.opacity(0.1))
+                                        .foregroundColor(.blue)
+                                        .cornerRadius(8)
+                                    }
+                                }
+                            }
+                            .padding(.top, 4)
                         }
                     }
                 }
@@ -95,6 +157,10 @@ struct EditQuoteView: View {
                     .disabled(content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
+            .onTapGesture {
+                // Ukryj sugestie po kliknięciu w inne miejsce
+                showingSuggestions = false
+            }
         }
     }
     
@@ -103,6 +169,7 @@ struct EditQuoteView: View {
         if !tag.isEmpty && !tags.contains(tag) {
             tags.append(tag)
             tagInput = ""
+            showingSuggestions = false
         }
     }
     

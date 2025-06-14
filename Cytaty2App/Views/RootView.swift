@@ -5,6 +5,7 @@ struct RootView: View {
     @State private var selectedTab: Int = 0
     @State private var previousTab: Int = 0
     @State private var tabSelectSubject = TabSelectSubject()
+    @State private var tagToFilter: String? = nil
     
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -18,7 +19,7 @@ struct RootView: View {
             .tag(0)
             
             NavigationStack {
-                AllQuotesView()
+                AllQuotesView(initialTagFilter: tagToFilter)
                     .navigationTitle("Wszystkie cytaty")
             }
             .tabItem {
@@ -37,22 +38,36 @@ struct RootView: View {
         }
         #if compiler(>=5.9) && canImport(SwiftUI)
         .onChange(of: selectedTab) { oldValue, newValue in
-            // Jeśli kliknięto tę samą zakładkę, zresetuj stos nawigacyjny
             if oldValue == newValue {
                 handleTabTap(tab: newValue)
             }
             previousTab = newValue
+            
+            // Wyczyść filtr tagu gdy opuszczamy zakładkę cytatów
+            if newValue != 1 {
+                tagToFilter = nil
+            }
         }
         #else
         .onChange(of: selectedTab) { newValue in
-            // Jeśli kliknięto tę samą zakładkę, zresetuj stos nawigacyjny
             if previousTab == newValue {
                 handleTabTap(tab: newValue)
             }
             previousTab = newValue
+            
+            // Wyczyść filtr tagu gdy opuszczamy zakładkę cytatów
+            if newValue != 1 {
+                tagToFilter = nil
+            }
         }
         #endif
         .environment(\.selectedTabSubject, tabSelectSubject)
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("NavigateToQuotesWithTag"))) { notification in
+            if let tag = notification.object as? String {
+                tagToFilter = tag
+                selectedTab = 1 // Przełącz na zakładkę cytatów
+            }
+        }
     }
     
     private func handleTabTap(tab: Int) {

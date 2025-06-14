@@ -4,17 +4,19 @@ struct BookDetailView: View {
     @EnvironmentObject var viewModel: QuoteViewModel
     let book: Book
     @State private var showingAddQuote = false
-
+    @State private var showingEditBook = false // Dodany stan
+    @State private var refreshToggle = false   // Dodany stan
+    
     // Funkcja pomocnicza do znajdowania aktualnej książki z ViewModel
     private var currentBook: Book {
         return viewModel.books.first { $0.id == book.id } ?? book
     }
-
+    
     var body: some View {
         VStack {
             BookHeaderView(book: currentBook)
                 .padding()
-
+            
             if currentBook.quotes.isEmpty {
                 EmptyQuoteView()
             } else {
@@ -25,26 +27,62 @@ struct BookDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button(action: {
-                    showingAddQuote = true
-                }) {
-                    Image(systemName: "quote.bubble.fill")
+                Menu {
+                    Button(action: {
+                        showingAddQuote = true
+                    }) {
+                        Label("Dodaj cytat", systemImage: "quote.bubble.fill")
+                    }
+                    
+                    Button(action: {
+                        showingEditBook = true
+                    }) {
+                        Label("Edytuj książkę", systemImage: "pencil")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
                 }
             }
         }
         .sheet(isPresented: $showingAddQuote) {
             AddQuoteView(book: currentBook)
         }
+        .sheet(isPresented: $showingEditBook) {
+            AddEditBookView(
+                isEditing: true,
+                book: currentBook,
+                onSave: { updatedBook in
+                    viewModel.updateBook(updatedBook)
+                    refreshToggle.toggle() // Odświeżenie widoku po edycji
+                }
+            )
+        }
+        .id(refreshToggle) // Aby wymuszać odświeżenie widoku
     }
 }
 
+// Pozostała część kodu bez zmian
+
+
 struct BookHeaderView: View {
     let book: Book
-
+    
+    // Funkcja do konwersji ścieżki na URL
+    private func getFullCoverURL() -> URL? {
+        guard let coverURL = book.coverURL else { return nil }
+        
+        if coverURL.hasPrefix("http") {
+            return URL(string: coverURL)
+        } else {
+            return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+                .appendingPathComponent(coverURL)
+        }
+    }
+    
     var body: some View {
         HStack(spacing: 20) {
-            if let coverURL = book.coverURL, let url = URL(string: coverURL) {
-                AsyncImage(url: url) { phase in
+            if let coverURL = getFullCoverURL() {
+                AsyncImage(url: coverURL) { phase in
                     switch phase {
                     case .empty:
                         ProgressView()
@@ -69,22 +107,22 @@ struct BookHeaderView: View {
                     .frame(width: 100, height: 140)
                     .foregroundColor(.gray)
             }
-
+            
             VStack(alignment: .leading, spacing: 8) {
                 Text(book.title)
                     .font(.title2)
                     .fontWeight(.bold)
-
+                
                 Text(book.author)
                     .font(.headline)
                     .foregroundColor(.secondary)
-
+                
                 if let publishYear = book.publishYear {
-                    Text("Rok wydania: \(publishYear)")
+                    Text("Rok wydania: \(String(publishYear))")  // Zmiana tutaj
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
-
+                
                 if let isbn = book.isbn {
                     Text("ISBN: \(isbn)")
                         .font(.caption)
@@ -94,6 +132,8 @@ struct BookHeaderView: View {
         }
     }
 }
+
+
 
 struct EmptyQuoteView: View {
     var body: some View {
@@ -128,21 +168,29 @@ struct QuoteListView: View {
     var body: some View {
         List {
             ForEach(currentBook.quotes.sorted(by: { $0.addedDate > $1.addedDate })) { quote in
-                QuoteRowView(quote: quote)
-                    .contextMenu {
-                        Button(action: {
-                            editingQuote = quote
-                        }) {
-                            Label("Edytuj", systemImage: "pencil")
+                NavigationLink(destination:
+                    QuoteDetailView(quote: quote, book: currentBook)
+                        .onDisappear {
+                            // Odświeżamy listę po powrocie z widoku szczegółów
+                            refreshToggle.toggle()
                         }
-                        
-                        Button(role: .destructive, action: {
-                            viewModel.deleteQuote(quote, from: currentBook)
-                            refreshToggle.toggle() // Odświeżenie widoku po usunięciu
-                        }) {
-                            Label("Usuń", systemImage: "trash")
-                        }
+                ) {
+                    QuoteRowView(quote: quote)
+                }
+                .contextMenu {
+                    Button(action: {
+                        editingQuote = quote
+                    }) {
+                        Label("Edytuj", systemImage: "pencil")
                     }
+                    
+                    Button(role: .destructive, action: {
+                        viewModel.deleteQuote(quote, from: currentBook)
+                        refreshToggle.toggle() // Odświeżenie widoku po usunięciu
+                    }) {
+                        Label("Usuń", systemImage: "trash")
+                    }
+                }
             }
         }
         .listStyle(InsetGroupedListStyle())
@@ -160,3 +208,4 @@ struct QuoteListView: View {
         .id(refreshToggle)
     }
 }
+

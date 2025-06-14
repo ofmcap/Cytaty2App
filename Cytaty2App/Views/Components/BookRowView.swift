@@ -20,10 +20,23 @@ struct BookRowView: View {
         }
     }
     
+    // Funkcja do konwersji ścieżki na URL
+    private func getFullCoverURL() -> URL? {
+        guard let coverURL = currentBook.coverURL else { return nil }
+        
+        if coverURL.hasPrefix("http") {
+            return URL(string: coverURL)
+        } else {
+            // Względna ścieżka w dokumentach
+            return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+                .appendingPathComponent(coverURL)
+        }
+    }
+    
     var body: some View {
         HStack {
-            if let coverURL = currentBook.coverURL, let url = URL(string: coverURL) {
-                AsyncImage(url: url) { phase in
+            if let coverURL = getFullCoverURL() {
+                AsyncImage(url: coverURL) { phase in
                     switch phase {
                     case .empty:
                         ProgressView()
@@ -33,6 +46,9 @@ struct BookRowView: View {
                             .aspectRatio(contentMode: .fit)
                     case .failure:
                         Image(systemName: "book")
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .foregroundColor(.gray)
                     @unknown default:
                         EmptyView()
                     }

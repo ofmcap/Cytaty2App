@@ -4,7 +4,7 @@ struct QuoteDetailView: View {
     @EnvironmentObject var viewModel: QuoteViewModel
     @Environment(\.presentationMode) var presentationMode
     @State private var showingEditSheet = false
-    @State private var refreshToggle = false // Dodajemy stan do wymuszenia odświeżenia
+    @State private var refreshToggle = false
     
     let quote: Quote
     let book: Book
@@ -123,13 +123,18 @@ struct QuoteDetailView: View {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack {
                                 ForEach(currentQuote.tags, id: \.self) { tag in
-                                    Text(tag)
-                                        .font(.subheadline)
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 6)
-                                        .background(Color.blue.opacity(0.1))
-                                        .foregroundColor(.blue)
-                                        .cornerRadius(16)
+                                    Button(action: {
+                                        // Przejdź do widoku wszystkich cytatów z filtrem tego tagu
+                                        navigateToAllQuotesWithTag(tag)
+                                    }) {
+                                        Text(tag)
+                                            .font(.subheadline)
+                                            .padding(.horizontal, 12)
+                                            .padding(.vertical, 6)
+                                            .background(Color.blue.opacity(0.1))
+                                            .foregroundColor(.blue)
+                                            .cornerRadius(16)
+                                    }
                                 }
                             }
                         }
@@ -184,13 +189,22 @@ struct QuoteDetailView: View {
                 book: currentBook,
                 quote: currentQuote,
                 onUpdate: {
-                    // Wymuszamy odświeżenie widoku
                     refreshToggle.toggle()
                 }
             )
         }
-        // Dodajemy id do wymuszenia odświeżenia widoku
         .id(refreshToggle)
+    }
+    
+    private func navigateToAllQuotesWithTag(_ tag: String) {
+        // Powiadomimy RootView o zmianie zakładki i filtrze
+        NotificationCenter.default.post(
+            name: Notification.Name("NavigateToQuotesWithTag"),
+            object: tag
+        )
+        
+        // Wróć do głównego widoku
+        presentationMode.wrappedValue.dismiss()
     }
     
     private func formatDate(_ date: Date) -> String {

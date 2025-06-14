@@ -103,4 +103,13 @@ class QuoteViewModel: ObservableObject {
             saveBooks()
         }
     }
+    
+    // Dodajemy nową metodę do QuoteViewModel
+    func updateBook(_ book: Book) {
+        if let index = books.firstIndex(where: { $0.id == book.id }) {
+            books[index] = book
+            saveBooks()
+        }
+    }
+
 }

@@ -6,11 +6,53 @@ struct SearchBooksView: View {
     
     @State private var query: String = ""
     @State private var isEditing = false
+    @State private var showingManualAdd = false
     
     var body: some View {
         NavigationView {
             VStack {
+                // Pasek wyszukiwania
                 searchBar
+                
+                // Przyciski wyboru trybu dodawania
+                HStack(spacing: 20) {
+                    Button(action: {
+                        showingManualAdd = true
+                    }) {
+                        VStack {
+                            Image(systemName: "square.and.pencil")
+                                .font(.system(size: 24))
+                            Text("Dodaj ręcznie")
+                                .font(.caption)
+                        }
+                        .foregroundColor(.blue)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color(.systemGray6))
+                        .cornerRadius(10)
+                    }
+                    
+                    Button(action: {
+                        if !query.isEmpty {
+                            viewModel.searchQuery = query
+                            viewModel.searchBooks()
+                        }
+                    }) {
+                        VStack {
+                            Image(systemName: "magnifyingglass")
+                                .font(.system(size: 24))
+                            Text("Szukaj online")
+                                .font(.caption)
+                        }
+                        .foregroundColor(.blue)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color(.systemGray6))
+                        .cornerRadius(10)
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.bottom, 8)
                 
                 if viewModel.isSearching {
                     ProgressView("Wyszukiwanie...")
@@ -21,7 +63,7 @@ struct SearchBooksView: View {
                     searchResultsList
                 }
             }
-            .navigationTitle("Wyszukaj książkę")
+            .navigationTitle("Dodaj książkę")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -29,6 +71,12 @@ struct SearchBooksView: View {
                         dismiss()
                     }
                 }
+            }
+            .sheet(isPresented: $showingManualAdd) {
+                AddEditBookView(isEditing: false, onSave: { book in
+                    viewModel.addBook(book)
+                    dismiss()
+                })
             }
         }
     }
@@ -65,6 +113,7 @@ struct SearchBooksView: View {
                     viewModel.searchQuery = query
                     viewModel.searchBooks()
                 }
+                .submitLabel(.search)
             
             if isEditing {
                 Button("Szukaj") {
@@ -96,6 +145,18 @@ struct SearchBooksView: View {
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
+            
+            Button(action: {
+                showingManualAdd = true
+            }) {
+                Text("Dodaj książkę ręcznie")
+                    .foregroundColor(.blue)
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 20)
+                    .background(Color.blue.opacity(0.1))
+                    .cornerRadius(8)
+            }
+            .padding(.top, 10)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -114,4 +175,3 @@ struct SearchBooksView: View {
         .listStyle(InsetGroupedListStyle())
     }
 }
-
