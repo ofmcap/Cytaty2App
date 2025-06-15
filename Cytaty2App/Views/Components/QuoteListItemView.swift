@@ -38,6 +38,16 @@ struct QuoteListItemView: View {
                         .foregroundColor(.secondary)
                 }
             }
+            
+            // Wyświetlanie fragmentu notatki
+            if let note = quoteWithBook.quote.note, !note.isEmpty {
+                Text(note)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .lineLimit(2)
+                    .padding(.top, 2)
+                    .italic()
+            }
         }
         .padding(.vertical, 4)
     }

@@ -11,6 +11,7 @@ struct AddQuoteView: View {
     @State private var chapter: String = ""
     @State private var tagInput: String = ""
     @State private var tags: [String] = []
+    @State private var note: String = "" // Nowe pole dla notatki
     @State private var showingSuggestions = false
     
     // Wszystkie istniejące tagi w aplikacji
@@ -58,10 +59,15 @@ struct AddQuoteView: View {
                                 .onSubmit {
                                     addTag()
                                 }
+                                #if compiler(>=5.9) && canImport(SwiftUI)
                                 .onChange(of: tagInput) { _, newValue in
                                     showingSuggestions = !newValue.isEmpty && !tagSuggestions.isEmpty
                                 }
-
+                                #else
+                                .onChange(of: tagInput) { newValue in
+                                    showingSuggestions = !newValue.isEmpty && !tagSuggestions.isEmpty
+                                }
+                                #endif
                             
                             Button(action: addTag) {
                                 Image(systemName: "plus.circle.fill")
@@ -125,6 +131,14 @@ struct AddQuoteView: View {
                         }
                     }
                 }
+                
+                // Nowa sekcja dla notatki
+                Section(header: Text("Notatka (opcjonalna)")) {
+                    TextEditor(text: $note)
+                        .frame(minHeight: 60)
+                        .font(.footnote) // Mniejsza czcionka
+                }
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
             }
             .navigationTitle("Nowy cytat")
             .navigationBarTitleDisplayMode(.inline)
@@ -159,11 +173,15 @@ struct AddQuoteView: View {
     }
     
     private func saveQuote() {
+        let trimmedNote = note.trimmingCharacters(in: .whitespacesAndNewlines)
+        let finalNote = trimmedNote.isEmpty ? nil : trimmedNote
+        
         let quote = Quote(
             content: content.trimmingCharacters(in: .whitespacesAndNewlines),
             page: Int(page),
             chapter: chapter.isEmpty ? nil : chapter,
-            tags: tags
+            tags: tags,
+            note: finalNote
         )
         
         viewModel.addQuote(quote, to: book)

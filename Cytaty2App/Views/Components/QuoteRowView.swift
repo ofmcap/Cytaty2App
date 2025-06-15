@@ -50,6 +50,16 @@ struct QuoteRowView: View {
                     }
                 }
             }
+            
+            // Wyświetlanie fragmentu notatki
+            if let note = quote.note, !note.isEmpty {
+                Text(note)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .lineLimit(2)
+                    .padding(.top, 4)
+                    .italic()
+            }
         }
         .padding(.vertical, 8)
     }
