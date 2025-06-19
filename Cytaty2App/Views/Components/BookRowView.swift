@@ -22,14 +22,21 @@ struct BookRowView: View {
     
     // Funkcja do konwersji ścieżki na URL
     private func getFullCoverURL() -> URL? {
-        guard let coverURL = currentBook.coverURL else { return nil }
+        guard let coverURL = currentBook.coverURL else {
+            print("❌ No coverURL for book: \(currentBook.title)")
+            return nil
+        }
         
         if coverURL.hasPrefix("http") {
-            return URL(string: coverURL)
+            let url = URL(string: coverURL)
+            print("🌐 Using web URL for \(currentBook.title): \(coverURL)")
+            return url
         } else {
             // Względna ścieżka w dokumentach
-            return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            let url = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
                 .appendingPathComponent(coverURL)
+            print("📁 Using local file for \(currentBook.title): \(url.path)")
+            return url
         }
     }
     
@@ -40,15 +47,23 @@ struct BookRowView: View {
                     switch phase {
                     case .empty:
                         ProgressView()
+                            .frame(width: 50, height: 70)
                     case .success(let image):
                         image
                             .resizable()
                             .aspectRatio(contentMode: .fit)
-                    case .failure:
+                            .onAppear {
+                                print("✅ Successfully loaded image for: \(currentBook.title)")
+                            }
+                    case .failure(let error):
                         Image(systemName: "book")
                             .resizable()
                             .aspectRatio(contentMode: .fit)
                             .foregroundColor(.gray)
+                            .onAppear {
+                                print("❌ Failed to load image for \(currentBook.title): \(error.localizedDescription)")
+                                print("🔗 Failed URL: \(coverURL)")
+                            }
                     @unknown default:
                         EmptyView()
                     }

@@ -29,11 +29,28 @@ class DefaultNetworkService: NetworkService {
         return response.items.compactMap { item -> Book? in
             guard let volumeInfo = item.volumeInfo else { return nil }
             
+            // Konwertujemy HTTP na HTTPS i dodajemy debugging
+            var coverURL: String? = nil
+            if let thumbnail = volumeInfo.imageLinks?.thumbnail {
+                // Konwertuj HTTP na HTTPS
+                coverURL = thumbnail.replacingOccurrences(of: "http://", with: "https://")
+                
+                // Dodajemy większy rozmiar obrazu
+                if coverURL!.contains("zoom=1") {
+                    coverURL = coverURL!.replacingOccurrences(of: "zoom=1", with: "zoom=2")
+                }
+                
+                print("📚 Book: \(volumeInfo.title)")
+                print("🖼️ Original thumbnail: \(thumbnail)")
+                print("🔒 Converted HTTPS URL: \(coverURL!)")
+                print("---")
+            }
+            
             return Book(
                 id: item.id,
                 title: volumeInfo.title,
                 author: volumeInfo.authors?.joined(separator: ", ") ?? "Nieznany autor",
-                coverURL: volumeInfo.imageLinks?.thumbnail,
+                coverURL: coverURL,
                 isbn: volumeInfo.industryIdentifiers?.first(where: { $0.type.contains("ISBN") })?.identifier,
                 publishYear: extractYear(from: volumeInfo.publishedDate)
             )
