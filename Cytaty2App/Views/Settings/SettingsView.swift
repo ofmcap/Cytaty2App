@@ -2,14 +2,39 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject var viewModel: QuoteViewModel
+    @EnvironmentObject var colorSchemeService: ColorSchemeService
     @AppStorage("isDarkMode") private var isDarkMode = false
     @State private var showingExportSheet = false
     @State private var showingImportSheet = false
     @State private var showingResetAlert = false
+    @State private var showingColorSchemeSelection = false
     
     var body: some View {
         Form {
             Section(header: Text("Wygląd")) {
+                // Wybór schematu kolorystycznego
+                Button(action: {
+                    showingColorSchemeSelection = true
+                }) {
+                    HStack {
+                        Text("Schemat kolorów")
+                            .foregroundColor(.primary)
+                        
+                        Spacer()
+                        
+                        // Podgląd aktualnego schematu
+                        ColorPreview(scheme: colorSchemeService.currentScheme)
+                        
+                        Text(colorSchemeService.currentScheme.name)
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
                 Toggle("Tryb ciemny", isOn: $isDarkMode)
                     #if compiler(>=5.9) && canImport(SwiftUI)
                     .onChange(of: isDarkMode) { _, newValue in
@@ -79,16 +104,17 @@ struct SettingsView: View {
         .sheet(isPresented: $showingImportSheet) {
             ImportView()
         }
+        .sheet(isPresented: $showingColorSchemeSelection) {
+            ColorSchemeSelectionView()
+        }
     }
     
     private func setAppAppearance(isDark: Bool) {
         if #available(iOS 15.0, *) {
-            // Nowa metoda dla iOS 15+
             guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
                   let window = windowScene.windows.first else { return }
             window.overrideUserInterfaceStyle = isDark ? .dark : .light
         } else {
-            // Metoda dla starszych wersji iOS
             UIApplication.shared.windows.first?.overrideUserInterfaceStyle = isDark ? .dark : .light
         }
     }
@@ -98,4 +124,3 @@ struct SettingsView: View {
         viewModel.saveBooks()
     }
 }
-

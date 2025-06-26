@@ -10,7 +10,7 @@ struct AddEditBookView: View {
     @State private var coverImage: UIImage?
     @State private var coverImageItem: PhotosPickerItem?
     @State private var showingImagePicker = false
-    @State private var existingCoverURL: String? = nil // Dla przechowywania oryginalnego URL
+    @State private var existingCoverURL: String? = nil
     
     let isEditing: Bool
     var book: Book?
@@ -55,8 +55,8 @@ struct AddEditBookView: View {
                                 .frame(height: 200)
                                 .cornerRadius(8)
                                 .padding(.vertical)
-                        } else if let existingCoverURL = existingCoverURL, let url = URL(string: existingCoverURL) {
-                            AsyncImage(url: url) { phase in
+                        } else if let existingCoverURL = existingCoverURL {
+                            AsyncImage(url: getFullCoverURL(from: existingCoverURL)) { phase in
                                 switch phase {
                                 case .empty:
                                     ProgressView()
@@ -123,14 +123,23 @@ struct AddEditBookView: View {
             }
             .onChange(of: coverImageItem) { loadImage() }
             .onAppear {
-                // Ładujemy istniejący obrazek okładki
                 loadExistingCoverImage()
             }
         }
     }
     
+    private func getFullCoverURL(from coverURL: String) -> URL? {
+        if coverURL.hasPrefix("http") {
+            return URL(string: coverURL)
+        } else {
+            // Względna ścieżka w dokumentach
+            let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            return documentsDirectory.appendingPathComponent(coverURL)
+        }
+    }
+    
     private func loadExistingCoverImage() {
-        if let coverURL = existingCoverURL, let url = URL(string: coverURL) {
+        if let coverURL = existingCoverURL, let url = getFullCoverURL(from: coverURL) {
             Task {
                 do {
                     let (data, _) = try await URLSession.shared.data(from: url)
@@ -165,32 +174,22 @@ struct AddEditBookView: View {
         
         // Jeśli mamy nowy obraz, zapisujemy go i uzyskujemy nowy URL
         if let image = coverImage, existingCoverURL == nil {
-            if let data = image.jpegData(compressionQuality: 0.8) {
-                let fileName = "\(UUID().uuidString).jpg"
-                
-                // Zapisujemy w folderze dokumentów aplikacji
+            // Usuwamy starą okładkę jeśli istnieje i to lokalna ścieżka
+            if let existingURL = book?.coverURL, !existingURL.hasPrefix("http") {
                 let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-                let fileURL = documentsDirectory.appendingPathComponent(fileName)
-                
-                do {
-                    try data.write(to: fileURL)
-                    
-                    // Używamy względnej ścieżki zamiast absolutnej
-                    let relativePath = "BookCovers/\(fileName)"
-                    
-                    // Upewniamy się, że folder BookCovers istnieje
-                    let coverDirectory = documentsDirectory.appendingPathComponent("BookCovers")
-                    if !FileManager.default.fileExists(atPath: coverDirectory.path) {
-                        try FileManager.default.createDirectory(at: coverDirectory, withIntermediateDirectories: true)
-                    }
-                    
-                    let finalURL = documentsDirectory.appendingPathComponent(relativePath)
-                    try data.write(to: finalURL)
-                    
-                    finalCoverURL = relativePath
-                } catch {
-                    print("Błąd zapisywania obrazu: \(error)")
-                }
+                let oldFileURL = documentsDirectory.appendingPathComponent(existingURL)
+                try? FileManager.default.removeItem(at: oldFileURL)
+                print("🗑️ Usunięto starą okładkę: \(existingURL)")
+            }
+            
+            // Zapisujemy nową okładkę
+            let fileName = "\(book?.id ?? UUID().uuidString).jpg"
+            if let relativePath = DefaultStorageService().saveCoverImage(image, fileName: fileName) {
+                finalCoverURL = relativePath
+                print("✅ Zapisano nową okładkę: \(relativePath)")
+            } else {
+                print("❌ Nie udało się zapisać okładki")
+                finalCoverURL = nil
             }
         }
         

@@ -38,8 +38,8 @@ struct QuoteDetailView: View {
                         .foregroundColor(.secondary)
                         
                         HStack {
-                            if let coverURL = currentBook.coverURL, let url = URL(string: coverURL) {
-                                AsyncImage(url: url) { phase in
+                            if let coverURL = getCoverURLForSource() {
+                                AsyncImage(url: coverURL) { phase in
                                     switch phase {
                                     case .empty:
                                         ProgressView()
@@ -187,15 +187,15 @@ struct QuoteDetailView: View {
                 .padding()
             }
             
-            // NOWY PRZYCISK NA DOLE - zawsze widoczny
+            // PRZYCISK "Zobacz książkę" na dole - zawsze widoczny
             VStack(spacing: 0) {
                 Divider()
                 
                 NavigationLink(destination: BookDetailView(book: currentBook)) {
                     HStack {
                         // Miniaturka okładki
-                        if let coverURL = currentBook.coverURL, let url = URL(string: coverURL) {
-                            AsyncImage(url: url) { phase in
+                        if let coverURL = getCoverURLForButton() {
+                            AsyncImage(url: coverURL) { phase in
                                 switch phase {
                                 case .empty:
                                     ProgressView()
@@ -302,6 +302,46 @@ struct QuoteDetailView: View {
             return "cytaty"
         } else {
             return "cytatów"
+        }
+    }
+    
+    // Funkcja pomocnicza dla okładki w sekcji źródło
+    private func getCoverURLForSource() -> URL? {
+        guard let coverURL = currentBook.coverURL else { return nil }
+        
+        if coverURL.hasPrefix("http") {
+            return URL(string: coverURL)
+        } else {
+            // Względna ścieżka w dokumentach
+            let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            let fullURL = documentsDirectory.appendingPathComponent(coverURL)
+            
+            // Sprawdź czy plik istnieje
+            if FileManager.default.fileExists(atPath: fullURL.path) {
+                return fullURL
+            } else {
+                return nil
+            }
+        }
+    }
+    
+    // Funkcja pomocnicza dla okładki w przycisku
+    private func getCoverURLForButton() -> URL? {
+        guard let coverURL = currentBook.coverURL else { return nil }
+        
+        if coverURL.hasPrefix("http") {
+            return URL(string: coverURL)
+        } else {
+            // Względna ścieżka w dokumentach
+            let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            let fullURL = documentsDirectory.appendingPathComponent(coverURL)
+            
+            // Sprawdź czy plik istnieje
+            if FileManager.default.fileExists(atPath: fullURL.path) {
+                return fullURL
+            } else {
+                return nil
+            }
         }
     }
     

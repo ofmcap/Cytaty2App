@@ -4,8 +4,8 @@ struct BookDetailView: View {
     @EnvironmentObject var viewModel: QuoteViewModel
     let book: Book
     @State private var showingAddQuote = false
-    @State private var showingEditBook = false // Dodany stan
-    @State private var refreshToggle = false   // Dodany stan
+    @State private var showingEditBook = false
+    @State private var refreshToggle = false
     
     // Funkcja pomocnicza do znajdowania aktualnej książki z ViewModel
     private var currentBook: Book {
@@ -53,16 +53,13 @@ struct BookDetailView: View {
                 book: currentBook,
                 onSave: { updatedBook in
                     viewModel.updateBook(updatedBook)
-                    refreshToggle.toggle() // Odświeżenie widoku po edycji
+                    refreshToggle.toggle()
                 }
             )
         }
-        .id(refreshToggle) // Aby wymuszać odświeżenie widoku
+        .id(refreshToggle)
     }
 }
-
-// Pozostała część kodu bez zmian
-
 
 struct BookHeaderView: View {
     let book: Book
@@ -74,8 +71,18 @@ struct BookHeaderView: View {
         if coverURL.hasPrefix("http") {
             return URL(string: coverURL)
         } else {
-            return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-                .appendingPathComponent(coverURL)
+            // Względna ścieżka w dokumentach
+            let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            let fullURL = documentsDirectory.appendingPathComponent(coverURL)
+            
+            // Sprawdź czy plik istnieje
+            if FileManager.default.fileExists(atPath: fullURL.path) {
+                print("📁 Lokalna okładka istnieje: \(fullURL.path)")
+                return fullURL
+            } else {
+                print("❌ Lokalna okładka nie istnieje: \(fullURL.path)")
+                return nil
+            }
         }
     }
     
@@ -90,10 +97,13 @@ struct BookHeaderView: View {
                         image
                             .resizable()
                             .aspectRatio(contentMode: .fit)
-                    case .failure:
+                    case .failure(let error):
                         Image(systemName: "book")
                             .resizable()
                             .aspectRatio(contentMode: .fit)
+                            .onAppear {
+                                print("❌ Błąd ładowania okładki w BookHeader: \(error.localizedDescription)")
+                            }
                     @unknown default:
                         EmptyView()
                     }
@@ -118,7 +128,7 @@ struct BookHeaderView: View {
                     .foregroundColor(.secondary)
                 
                 if let publishYear = book.publishYear {
-                    Text("Rok wydania: \(String(publishYear))")  // Zmiana tutaj
+                    Text("Rok wydania: \(String(publishYear))")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
@@ -133,19 +143,17 @@ struct BookHeaderView: View {
     }
 }
 
-
-
 struct EmptyQuoteView: View {
     var body: some View {
         VStack(spacing: 20) {
             Image(systemName: "text.quote")
                 .font(.system(size: 60))
                 .foregroundColor(.gray)
-
+            
             Text("Brak cytatów")
                 .font(.title2)
                 .foregroundColor(.gray)
-
+            
             Text("Dodaj pierwszy cytat z tej książki")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
@@ -158,7 +166,7 @@ struct QuoteListView: View {
     @EnvironmentObject var viewModel: QuoteViewModel
     let book: Book
     @State private var editingQuote: Quote?
-    @State private var refreshToggle = false // Dodajemy stan do wymuszenia odświeżenia
+    @State private var refreshToggle = false
     
     // Funkcja pomocnicza do znajdowania aktualnej książki z ViewModel
     private var currentBook: Book {
@@ -171,7 +179,6 @@ struct QuoteListView: View {
                 NavigationLink(destination:
                     QuoteDetailView(quote: quote, book: currentBook)
                         .onDisappear {
-                            // Odświeżamy listę po powrocie z widoku szczegółów
                             refreshToggle.toggle()
                         }
                 ) {
@@ -186,7 +193,7 @@ struct QuoteListView: View {
                     
                     Button(role: .destructive, action: {
                         viewModel.deleteQuote(quote, from: currentBook)
-                        refreshToggle.toggle() // Odświeżenie widoku po usunięciu
+                        refreshToggle.toggle()
                     }) {
                         Label("Usuń", systemImage: "trash")
                     }
@@ -199,13 +206,10 @@ struct QuoteListView: View {
                 book: currentBook,
                 quote: quote,
                 onUpdate: {
-                    // Wymuszamy odświeżenie widoku
                     refreshToggle.toggle()
                 }
             )
         }
-        // Dodajemy id do wymuszenia odświeżenia widoku
         .id(refreshToggle)
     }
 }
-
