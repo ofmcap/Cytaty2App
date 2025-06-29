@@ -3,7 +3,6 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject var viewModel: QuoteViewModel
     @EnvironmentObject var colorSchemeService: ColorSchemeService
-    @AppStorage("isDarkMode") private var isDarkMode = false
     @State private var showingExportSheet = false
     @State private var showingImportSheet = false
     @State private var showingResetAlert = false
@@ -22,12 +21,8 @@ struct SettingsView: View {
                         
                         Spacer()
                         
-                        // Podgląd aktualnego schematu
+                        // Podgląd aktualnego schematu - TYLKO KOLORY
                         ColorPreview(scheme: colorSchemeService.currentScheme)
-                        
-                        Text(colorSchemeService.currentScheme.name)
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
                         
                         Image(systemName: "chevron.right")
                             .font(.caption)
@@ -35,16 +30,17 @@ struct SettingsView: View {
                     }
                 }
                 
-                Toggle("Tryb ciemny", isOn: $isDarkMode)
-                    #if compiler(>=5.9) && canImport(SwiftUI)
-                    .onChange(of: isDarkMode) { _, newValue in
-                        setAppAppearance(isDark: newValue)
-                    }
-                    #else
-                    .onChange(of: isDarkMode) { newValue in
-                        setAppAppearance(isDark: newValue)
-                    }
-                    #endif
+                // Przełącznik trybu ciemny/jasny
+                HStack {
+                    Text("Tryb ciemny")
+                    
+                    Spacer()
+                    
+                    Toggle("", isOn: Binding(
+                        get: { colorSchemeService.currentScheme.isDarkVariant },
+                        set: { _ in colorSchemeService.toggleDarkMode() }
+                    ))
+                }
             }
             
             Section(header: Text("Dane")) {
@@ -106,16 +102,6 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $showingColorSchemeSelection) {
             ColorSchemeSelectionView()
-        }
-    }
-    
-    private func setAppAppearance(isDark: Bool) {
-        if #available(iOS 15.0, *) {
-            guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                  let window = windowScene.windows.first else { return }
-            window.overrideUserInterfaceStyle = isDark ? .dark : .light
-        } else {
-            UIApplication.shared.windows.first?.overrideUserInterfaceStyle = isDark ? .dark : .light
         }
     }
     

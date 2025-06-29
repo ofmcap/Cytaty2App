@@ -3,11 +3,13 @@ import SwiftUI
 
 struct AppColorScheme: Identifiable, Codable {
     let name: String
+    let displayName: String
     let background: String
     let primaryText: String
     let secondaryText: String
     let accent: String
     let uiElement: String
+    let isDarkVariant: Bool
     
     // ID generowane na podstawie nazwy - będzie spójne
     var id: String {
@@ -35,12 +37,9 @@ struct AppColorScheme: Identifiable, Codable {
         Color(hex: uiElement)
     }
     
-    // Sprawdza czy to ciemny motyw
+    // Backward compatibility - obliczana właściwość
     var isDark: Bool {
-        let bgColor = UIColor(hex: background)
-        var white: CGFloat = 0
-        bgColor?.getWhite(&white, alpha: nil)
-        return white < 0.5
+        return isDarkVariant
     }
 }
 
