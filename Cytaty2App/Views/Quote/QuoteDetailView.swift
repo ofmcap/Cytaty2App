@@ -3,6 +3,8 @@ import SwiftUI
 struct QuoteDetailView: View {
     @EnvironmentObject var viewModel: QuoteViewModel
     @Environment(\.presentationMode) var presentationMode
+    @Environment(\.appColors) var appColors
+
     @State private var showingEditSheet = false
     @State private var refreshToggle = false
     

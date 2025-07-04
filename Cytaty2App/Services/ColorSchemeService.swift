@@ -1,3 +1,4 @@
+// Cytaty2App/Services/ColorSchemeService.swift
 import Foundation
 import SwiftUI
 
@@ -51,9 +52,6 @@ class ColorSchemeService: ObservableObject {
         
         // Następnie ładujemy zapisany schemat
         loadSavedScheme()
-        
-        // I aktualizujemy wygląd aplikacji
-        updateAppAppearance()
     }
     
     private func loadSavedScheme() {
@@ -71,7 +69,9 @@ class ColorSchemeService: ObservableObject {
         currentScheme = scheme
         selectedSchemeName = scheme.name
         isDarkModeEnabled = scheme.isDarkVariant
-        updateAppAppearance()
+        
+        // Automatyczne zaktualizowanie UI poprzez @Published
+        objectWillChange.send()
     }
     
     func toggleDarkMode() {
@@ -87,17 +87,4 @@ class ColorSchemeService: ObservableObject {
             selectScheme(targetScheme)
         }
     }
-
-    private func updateAppAppearance() {
-        DispatchQueue.main.async {
-            if #available(iOS 15.0, *) {
-                guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                      let window = windowScene.windows.first else { return }
-                window.overrideUserInterfaceStyle = self.currentScheme.isDarkVariant ? .dark : .light
-            } else {
-                UIApplication.shared.windows.first?.overrideUserInterfaceStyle = self.currentScheme.isDarkVariant ? .dark : .light
-            }
-        }
-    }
 }
-

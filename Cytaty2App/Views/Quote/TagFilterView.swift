@@ -2,6 +2,8 @@ import SwiftUI
 
 struct TagFilterView: View {
     @Environment(\.dismiss) var dismiss
+    @Environment(\.appColors) var appColors
+
     @Binding var selectedTag: String?
     let allTags: [String]
     @State private var searchText = ""

@@ -1,8 +1,10 @@
+// Cytaty2App/Views/Settings/SettingsView.swift
 import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject var viewModel: QuoteViewModel
     @EnvironmentObject var colorSchemeService: ColorSchemeService
+    @Environment(\.appColors) var appColors
     @State private var showingExportSheet = false
     @State private var showingImportSheet = false
     @State private var showingResetAlert = false
@@ -17,22 +19,27 @@ struct SettingsView: View {
                 }) {
                     HStack {
                         Text("Schemat kolorów")
-                            .foregroundColor(.primary)
+                            .foregroundColor(appColors.primaryTextColor)
                         
                         Spacer()
                         
-                        // Podgląd aktualnego schematu - TYLKO KOLORY
+                        // Podgląd aktualnego schematu
                         ColorPreview(scheme: colorSchemeService.currentScheme)
+                        
+                        Text(colorSchemeService.currentScheme.displayName)
+                            .foregroundColor(appColors.secondaryTextColor)
+                            .font(.caption)
                         
                         Image(systemName: "chevron.right")
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(appColors.secondaryTextColor)
                     }
                 }
                 
                 // Przełącznik trybu ciemny/jasny
                 HStack {
                     Text("Tryb ciemny")
+                        .foregroundColor(appColors.primaryTextColor)
                     
                     Spacer()
                     
@@ -40,32 +47,37 @@ struct SettingsView: View {
                         get: { colorSchemeService.currentScheme.isDarkVariant },
                         set: { _ in colorSchemeService.toggleDarkMode() }
                     ))
+                    .tint(appColors.accentColor)
                 }
             }
             
             Section(header: Text("Dane")) {
                 HStack {
                     Text("Liczba książek")
+                        .foregroundColor(appColors.primaryTextColor)
                     Spacer()
                     Text("\(viewModel.books.count)")
-                        .foregroundColor(.secondary)
+                        .foregroundColor(appColors.secondaryTextColor)
                 }
                 
                 HStack {
                     Text("Liczba cytatów")
+                        .foregroundColor(appColors.primaryTextColor)
                     Spacer()
                     let quoteCount = viewModel.books.reduce(0) { $0 + $1.quotes.count }
                     Text("\(quoteCount)")
-                        .foregroundColor(.secondary)
+                        .foregroundColor(appColors.secondaryTextColor)
                 }
                 
                 Button("Eksportuj dane") {
                     showingExportSheet = true
                 }
+                .foregroundColor(appColors.accentColor)
                 
                 Button("Importuj dane") {
                     showingImportSheet = true
                 }
+                .foregroundColor(appColors.accentColor)
                 
                 Button("Resetuj wszystkie dane") {
                     showingResetAlert = true
@@ -76,16 +88,22 @@ struct SettingsView: View {
             Section(header: Text("O aplikacji")) {
                 HStack {
                     Text("Wersja")
+                        .foregroundColor(appColors.primaryTextColor)
                     Spacer()
                     Text("1.0.0")
-                        .foregroundColor(.secondary)
+                        .foregroundColor(appColors.secondaryTextColor)
                 }
                 
                 Link("Polityka prywatności", destination: URL(string: "https://example.com/privacy")!)
+                    .foregroundColor(appColors.accentColor)
                 Link("Warunki użytkowania", destination: URL(string: "https://example.com/terms")!)
+                    .foregroundColor(appColors.accentColor)
                 Link("Kontakt", destination: URL(string: "mailto:contact@example.com")!)
+                    .foregroundColor(appColors.accentColor)
             }
         }
+        .background(appColors.backgroundColor)
+        .scrollContentBackground(.hidden) // Ukryj domyślne tło Form
         .alert("Resetuj dane", isPresented: $showingResetAlert) {
             Button("Anuluj", role: .cancel) { }
             Button("Resetuj", role: .destructive) {

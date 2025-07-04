@@ -10,6 +10,8 @@ struct AllQuotesView: View {
     @State private var showingTagFilter = false
     @Environment(\.selectedTabSubject) var tabSubject
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.appColors) var appColors
+
     
     let initialTagFilter: String?
     

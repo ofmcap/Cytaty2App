@@ -3,6 +3,8 @@ import SwiftUI
 struct AddQuoteView: View {
     @EnvironmentObject var viewModel: QuoteViewModel
     @Environment(\.dismiss) var dismiss
+    @Environment(\.appColors) var appColors
+
     
     let book: Book
     

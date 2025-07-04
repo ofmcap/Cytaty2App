@@ -2,10 +2,13 @@ import SwiftUI
 
 struct BookListView: View {
     @EnvironmentObject var viewModel: QuoteViewModel
+    @EnvironmentObject var colorSchemeService: ColorSchemeService
     @State private var showingSearchBooks = false
     @State private var searchText = ""
     @Environment(\.selectedTabSubject) var tabSubject
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.appColors) var appColors
+
     
     // Filtrowane książki na podstawie wyszukiwania
     private var filteredBooks: [Book] {
@@ -31,11 +34,11 @@ struct BookListView: View {
                 VStack(spacing: 20) {
                     Image(systemName: "magnifyingglass")
                         .font(.system(size: 60))
-                        .foregroundColor(.gray)
+                        .grayText() // .foregroundColor(.gray)
                     
                     Text("Brak wyników")
                         .font(.title2)
-                        .foregroundColor(.gray)
+                        .grayText() // .foregroundColor(.gray)
                     
                     Text("Nie znaleziono książek pasujących do: \"\(searchText)\"")
                         .font(.subheadline)
