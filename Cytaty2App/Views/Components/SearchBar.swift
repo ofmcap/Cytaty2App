@@ -1,3 +1,4 @@
+// Cytaty2App/Views/Components/SearchBar.swift
 import SwiftUI
 
 struct SearchBar: View {
@@ -5,18 +6,20 @@ struct SearchBar: View {
     var placeholder: String
     @State private var isEditing = false
     var onSubmit: (() -> Void)? = nil
+    @Environment(\.appColors) var appColors
     
     var body: some View {
         HStack {
             TextField(placeholder, text: $text)
                 .padding(8)
                 .padding(.horizontal, 25)
-                .background(Color(.systemGray6))
+                .background(appColors.uiElementColor) // Zmiana z Color(.systemGray6)
+                .foregroundColor(appColors.primaryTextColor) // Kolor tekstu
                 .cornerRadius(8)
                 .overlay(
                     HStack {
                         Image(systemName: "magnifyingglass")
-                            .foregroundColor(.gray)
+                            .foregroundColor(appColors.secondaryTextColor) // Zmiana z .gray
                             .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
                             .padding(.leading, 8)
                         
@@ -25,7 +28,7 @@ struct SearchBar: View {
                                 text = ""
                             }) {
                                 Image(systemName: "multiply.circle.fill")
-                                    .foregroundColor(.gray)
+                                    .foregroundColor(appColors.secondaryTextColor) // Zmiana z .gray
                                     .padding(.trailing, 8)
                             }
                         }
@@ -43,7 +46,6 @@ struct SearchBar: View {
                                                    from: nil,
                                                    for: nil)
                 }
-                // Dodajemy modyfikator, który zmienia etykietę klawisza na "Szukaj"
                 .submitLabel(.search)
             
             if isEditing {
@@ -55,6 +57,7 @@ struct SearchBar: View {
                                                    from: nil,
                                                    for: nil)
                 }
+                .foregroundColor(appColors.accentColor) // Dodaj kolor
                 .padding(.trailing, 10)
                 .transition(.move(edge: .trailing))
                 .animation(.default, value: isEditing)
@@ -62,4 +65,3 @@ struct SearchBar: View {
         }
     }
 }
-

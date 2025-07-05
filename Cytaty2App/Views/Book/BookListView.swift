@@ -1,3 +1,4 @@
+// Cytaty2App/Views/Book/BookListView.swift
 import SwiftUI
 
 struct BookListView: View {
@@ -8,7 +9,6 @@ struct BookListView: View {
     @Environment(\.selectedTabSubject) var tabSubject
     @Environment(\.dismiss) private var dismiss
     @Environment(\.appColors) var appColors
-
     
     // Filtrowane książki na podstawie wyszukiwania
     private var filteredBooks: [Book] {
@@ -34,15 +34,15 @@ struct BookListView: View {
                 VStack(spacing: 20) {
                     Image(systemName: "magnifyingglass")
                         .font(.system(size: 60))
-                        .grayText() // .foregroundColor(.gray)
+                        .foregroundColor(appColors.secondaryTextColor) // Zmiana z .grayText()
                     
                     Text("Brak wyników")
                         .font(.title2)
-                        .grayText() // .foregroundColor(.gray)
+                        .foregroundColor(appColors.primaryTextColor) // Zmiana z .grayText()
                     
                     Text("Nie znaleziono książek pasujących do: \"\(searchText)\"")
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(appColors.secondaryTextColor) // Zmiana z .secondary
                         .multilineTextAlignment(.center)
                         .padding(.horizontal)
                 }
@@ -58,14 +58,18 @@ struct BookListView: View {
                     .onDelete(perform: viewModel.deleteBook)
                 }
                 .listStyle(InsetGroupedListStyle())
+                .scrollContentBackground(.hidden) // Ukryj domyślne tło
+                .background(appColors.backgroundColor) // Dodaj tło ze schematu
             }
         }
+        .background(appColors.backgroundColor) // Tło główne
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button(action: {
                     showingSearchBooks = true
                 }) {
                     Image(systemName: "plus")
+                        .foregroundColor(appColors.accentColor) // Dodaj kolor
                 }
             }
         }
