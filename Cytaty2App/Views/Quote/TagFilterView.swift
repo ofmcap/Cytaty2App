@@ -8,7 +8,6 @@ struct TagFilterView: View {
     let allTags: [String]
     @State private var searchText = ""
     
-    // Filtrowanie tagów na podstawie wyszukiwania
     private var filteredTags: [String] {
         if searchText.isEmpty {
             return allTags.sorted()
@@ -19,7 +18,6 @@ struct TagFilterView: View {
         }
     }
     
-    // Grupowanie tagów alfabetycznie
     private var tagsByFirstLetter: [String: [String]] {
         Dictionary(grouping: filteredTags) { tag in
             guard let firstChar = tag.first?.uppercased() else { return "#" }
@@ -27,7 +25,6 @@ struct TagFilterView: View {
         }
     }
     
-    // Posortowane klucze dla sekcji alfabetycznych
     private var sortedTagSections: [String] {
         tagsByFirstLetter.keys.sorted()
     }
@@ -35,7 +32,6 @@ struct TagFilterView: View {
     var body: some View {
         NavigationView {
             VStack {
-                // Pasek wyszukiwania tagów
                 if !allTags.isEmpty {
                     SearchBar(text: $searchText, placeholder: "Szukaj tagów")
                         .padding(.horizontal)
@@ -43,75 +39,69 @@ struct TagFilterView: View {
                 }
                 
                 if filteredTags.isEmpty && !searchText.isEmpty {
-                    // Brak wyników wyszukiwania
                     VStack(spacing: 20) {
                         Image(systemName: "magnifyingglass")
                             .font(.system(size: 60))
-                            .foregroundColor(.gray)
+                            .foregroundColor(appColors.secondaryTextColor)
                         
                         Text("Brak pasujących tagów")
                             .font(.title2)
-                            .foregroundColor(.gray)
+                            .foregroundColor(appColors.primaryTextColor)
                         
                         Text("Nie znaleziono tagów pasujących do: \"\(searchText)\"")
                             .font(.subheadline)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(appColors.secondaryTextColor)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if allTags.isEmpty {
-                    // Brak tagów w ogóle
                     VStack(spacing: 20) {
                         Image(systemName: "tag.slash")
                             .font(.system(size: 60))
-                            .foregroundColor(.gray)
+                            .foregroundColor(appColors.secondaryTextColor)
                         
                         Text("Brak tagów")
                             .font(.title2)
-                            .foregroundColor(.gray)
+                            .foregroundColor(appColors.primaryTextColor)
                         
                         Text("Dodaj tagi do swoich cytatów, aby móc filtrować według nich")
                             .font(.subheadline)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(appColors.secondaryTextColor)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    // Lista tagów
                     List {
-                        // Opcja "Wszystkie tagi"
                         Button(action: {
                             selectedTag = nil
                             dismiss()
                         }) {
                             HStack {
                                 Image(systemName: "tag")
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(appColors.accentColor)
                                     .frame(width: 20)
                                 
                                 Text("Wszystkie tagi")
-                                    .foregroundColor(.primary)
+                                    .foregroundColor(appColors.primaryTextColor)
                                     .fontWeight(selectedTag == nil ? .medium : .regular)
                                 
                                 Spacer()
                                 
                                 if selectedTag == nil {
                                     Image(systemName: "checkmark")
-                                        .foregroundColor(.blue)
+                                        .foregroundColor(appColors.accentColor)
                                         .fontWeight(.medium)
                                 }
                             }
                             .padding(.vertical, 4)
                         }
-                        .listRowBackground(selectedTag == nil ? Color.blue.opacity(0.1) : Color.clear)
+                        .listRowBackground(selectedTag == nil ? appColors.accentColor.opacity(0.1) : Color.clear)
                         
-                        // Sekcje z tagami
                         ForEach(sortedTagSections, id: \.self) { section in
                             if filteredTags.count > 10 {
-                                // Jeśli jest dużo tagów, grupujemy je w sekcje
-                                Section(header: Text(section).font(.headline)) {
+                                Section(header: Text(section).font(.headline).foregroundColor(appColors.secondaryTextColor)) {
                                     ForEach(tagsByFirstLetter[section]?.sorted() ?? [], id: \.self) { tag in
                                         TagRowView(
                                             tag: tag,
@@ -119,12 +109,12 @@ struct TagFilterView: View {
                                             onTap: {
                                                 selectedTag = tag
                                                 dismiss()
-                                            }
+                                            },
+                                            appColors: appColors
                                         )
                                     }
                                 }
                             } else {
-                                // Jeśli jest mało tagów, pokazujemy je bez sekcji
                                 ForEach(tagsByFirstLetter[section]?.sorted() ?? [], id: \.self) { tag in
                                     TagRowView(
                                         tag: tag,
@@ -132,7 +122,8 @@ struct TagFilterView: View {
                                         onTap: {
                                             selectedTag = tag
                                             dismiss()
-                                        }
+                                        },
+                                        appColors: appColors
                                     )
                                 }
                             }
@@ -141,6 +132,7 @@ struct TagFilterView: View {
                     .listStyle(InsetGroupedListStyle())
                 }
             }
+            .background(appColors.backgroundColor)
             .navigationTitle("Filtruj według tagów")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -148,6 +140,7 @@ struct TagFilterView: View {
                     Button("Anuluj") {
                         dismiss()
                     }
+                    .foregroundColor(appColors.secondaryTextColor)
                 }
                 
                 if selectedTag != nil {
@@ -156,6 +149,7 @@ struct TagFilterView: View {
                             selectedTag = nil
                             dismiss()
                         }
+                        .foregroundColor(appColors.accentColor)
                     }
                 }
             }
@@ -168,29 +162,30 @@ struct TagRowView: View {
     let tag: String
     let isSelected: Bool
     let onTap: () -> Void
+    let appColors: AppColorScheme
     
     var body: some View {
         Button(action: onTap) {
             HStack {
                 Image(systemName: "tag.fill")
-                    .foregroundColor(isSelected ? .white : .blue)
+                    .foregroundColor(isSelected ? appColors.backgroundColor : appColors.accentColor)
                     .frame(width: 20)
                 
                 Text(tag)
-                    .foregroundColor(isSelected ? .white : .primary)
+                    .foregroundColor(isSelected ? appColors.backgroundColor : appColors.primaryTextColor)
                     .fontWeight(isSelected ? .medium : .regular)
                 
                 Spacer()
                 
                 if isSelected {
                     Image(systemName: "checkmark")
-                        .foregroundColor(.white)
+                        .foregroundColor(appColors.backgroundColor)
                         .fontWeight(.medium)
                 }
             }
             .padding(.vertical, 8)
             .padding(.horizontal, 12)
-            .background(isSelected ? Color.blue : Color.clear)
+            .background(isSelected ? appColors.accentColor : Color.clear)
             .cornerRadius(8)
         }
         .listRowBackground(Color.clear)
@@ -205,5 +200,6 @@ struct TagFilterView_Previews: PreviewProvider {
             selectedTag: .constant("Filozofia"),
             allTags: ["Filozofia", "Nauka", "Sztuka", "Historia", "Literatura", "Psychologia", "Biznes", "Motywacja", "Życie", "Miłość"]
         )
+       // .environment(\.appColors, AppColorScheme.preview)
     }
 }

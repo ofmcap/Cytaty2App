@@ -1,4 +1,3 @@
-// Cytaty2App/Views/Book/BookListView.swift
 import SwiftUI
 
 struct BookListView: View {
@@ -9,7 +8,7 @@ struct BookListView: View {
     @Environment(\.selectedTabSubject) var tabSubject
     @Environment(\.dismiss) private var dismiss
     @Environment(\.appColors) var appColors
-    
+
     // Filtrowane książki na podstawie wyszukiwania
     private var filteredBooks: [Book] {
         if searchText.isEmpty {
@@ -21,33 +20,34 @@ struct BookListView: View {
             }
         }
     }
-    
+
     var body: some View {
         VStack {
             // Pasek wyszukiwania umieszczony na stałe
             SearchBar(text: $searchText, placeholder: "Szukaj w mojej bibliotece")
                 .padding(.horizontal)
                 .padding(.top, 8)
-            
-            // Lista książek
+
+            // Lista książek lub komunikat o braku wyników
             if filteredBooks.isEmpty && !searchText.isEmpty {
                 VStack(spacing: 20) {
                     Image(systemName: "magnifyingglass")
                         .font(.system(size: 60))
-                        .foregroundColor(appColors.secondaryTextColor) // Zmiana z .grayText()
-                    
+                        .foregroundColor(appColors.secondaryTextColor)
+
                     Text("Brak wyników")
                         .font(.title2)
-                        .foregroundColor(appColors.primaryTextColor) // Zmiana z .grayText()
-                    
+                        .foregroundColor(appColors.primaryTextColor)
+
                     Text("Nie znaleziono książek pasujących do: \"\(searchText)\"")
                         .font(.subheadline)
-                        .foregroundColor(appColors.secondaryTextColor) // Zmiana z .secondary
+                        .foregroundColor(appColors.secondaryTextColor)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal)
                 }
                 .padding()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(appColors.backgroundColor)
             } else {
                 List {
                     ForEach(filteredBooks) { book in
@@ -58,18 +58,25 @@ struct BookListView: View {
                     .onDelete(perform: viewModel.deleteBook)
                 }
                 .listStyle(InsetGroupedListStyle())
-                .scrollContentBackground(.hidden) // Ukryj domyślne tło
-                .background(appColors.backgroundColor) // Dodaj tło ze schematu
+                .scrollContentBackground(.hidden)
+                .background(appColors.backgroundColor)
+                .onAppear {
+                    UITableView.appearance().backgroundColor = UIColor.clear
+                }
+                .onDisappear {
+                    UITableView.appearance().backgroundColor = nil
+                }
+                .listRowBackground(appColors.backgroundColor)
             }
         }
-        .background(appColors.backgroundColor) // Tło główne
+        .background(appColors.backgroundColor)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button(action: {
                     showingSearchBooks = true
                 }) {
                     Image(systemName: "plus")
-                        .foregroundColor(appColors.accentColor) // Dodaj kolor
+                        .foregroundColor(appColors.accentColor)
                 }
             }
         }

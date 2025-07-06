@@ -15,7 +15,7 @@ struct AddQuoteView: View {
     @State private var tags: [String] = []
     @State private var note: String = ""
     @State private var showingSuggestions = false
-    @FocusState private var isTagInputFocused: Bool // Nowy stan dla focus
+    @FocusState private var isTagInputFocused: Bool
     
     // Wszystkie istniejące tagi w aplikacji
     private var allExistingTags: [String] {
@@ -43,40 +43,49 @@ struct AddQuoteView: View {
         NavigationView {
             ScrollViewReader { proxy in
                 Form {
-                    Section(header: Text("Treść cytatu")) {
+                    Section(header: Text("Treść cytatu")
+                        .foregroundColor(appColors.secondaryTextColor)) {
                         TextEditor(text: $content)
                             .frame(minHeight: 100)
+                            .foregroundColor(appColors.primaryTextColor)
                     }
+                    .listRowBackground(appColors.backgroundColor)
                     
-                    Section(header: Text("Szczegóły (opcjonalne)")) {
+                    Section(header: Text("Szczegóły (opcjonalne)")
+                        .foregroundColor(appColors.secondaryTextColor)) {
                         TextField("Strona", text: $page)
                             .keyboardType(.numberPad)
+                            .foregroundColor(appColors.primaryTextColor)
                         
                         TextField("Rozdział", text: $chapter)
+                            .foregroundColor(appColors.primaryTextColor)
                     }
+                    .listRowBackground(appColors.backgroundColor)
                     
-                    Section(header: Text("Tagi")) {
+                    Section(header: Text("Tagi")
+                        .foregroundColor(appColors.secondaryTextColor)) {
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
                                 TextField("Dodaj tag", text: $tagInput)
                                     .focused($isTagInputFocused)
                                     .submitLabel(.done)
+                                    .foregroundColor(appColors.primaryTextColor)
                                     .onSubmit {
                                         addTag()
                                     }
-                                    #if compiler(>=5.9) && canImport(SwiftUI)
+                                #if compiler(>=5.9) && canImport(SwiftUI)
                                     .onChange(of: tagInput) { _, newValue in
                                         showingSuggestions = !newValue.isEmpty && !tagSuggestions.isEmpty
                                     }
-                                    #else
+                                #else
                                     .onChange(of: tagInput) { newValue in
                                         showingSuggestions = !newValue.isEmpty && !tagSuggestions.isEmpty
                                     }
-                                    #endif
+                                #endif
                                 
                                 Button(action: addTag) {
                                     Image(systemName: "plus.circle.fill")
-                                        .foregroundColor(.blue)
+                                        .foregroundColor(appColors.accentColor)
                                 }
                                 .disabled(tagInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                             }
@@ -86,7 +95,7 @@ struct AddQuoteView: View {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text("Sugestie:")
                                         .font(.caption)
-                                        .foregroundColor(.secondary)
+                                        .foregroundColor(appColors.secondaryTextColor)
                                     
                                     ScrollView(.horizontal, showsIndicators: false) {
                                         HStack {
@@ -99,8 +108,8 @@ struct AddQuoteView: View {
                                                         .font(.caption)
                                                         .padding(.horizontal, 8)
                                                         .padding(.vertical, 4)
-                                                        .background(Color.blue.opacity(0.1))
-                                                        .foregroundColor(.blue)
+                                                        .background(appColors.accentColor.opacity(0.1))
+                                                        .foregroundColor(appColors.accentColor)
                                                         .cornerRadius(12)
                                                 }
                                             }
@@ -117,18 +126,19 @@ struct AddQuoteView: View {
                                         ForEach(tags, id: \.self) { tag in
                                             HStack {
                                                 Text(tag)
+                                                    .foregroundColor(appColors.accentColor)
                                                 
                                                 Button(action: {
                                                     tags.removeAll { $0 == tag }
                                                 }) {
                                                     Image(systemName: "xmark.circle.fill")
                                                         .font(.caption)
+                                                        .foregroundColor(appColors.secondaryTextColor)
                                                 }
                                             }
                                             .padding(.horizontal, 8)
                                             .padding(.vertical, 4)
-                                            .background(Color.blue.opacity(0.1))
-                                            .foregroundColor(.blue)
+                                            .background(appColors.accentColor.opacity(0.1))
                                             .cornerRadius(8)
                                         }
                                     }
@@ -136,17 +146,23 @@ struct AddQuoteView: View {
                                 .padding(.top, 4)
                             }
                         }
-                        .id("tagsSection") // ID dla ScrollViewReader
+                        .id("tagsSection")
                     }
+                    .listRowBackground(appColors.backgroundColor)
                     
                     // Sekcja dla notatki
-                    Section(header: Text("Notatka (opcjonalna)")) {
+                    Section(header: Text("Notatka (opcjonalna)")
+                        .foregroundColor(appColors.secondaryTextColor)) {
                         TextEditor(text: $note)
                             .frame(minHeight: 60)
                             .font(.footnote)
+                            .foregroundColor(appColors.primaryTextColor)
                     }
+                    .listRowBackground(appColors.backgroundColor)
                     .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                 }
+                .scrollContentBackground(.hidden)
+                .background(appColors.backgroundColor)
                 .navigationTitle("Nowy cytat")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
@@ -154,20 +170,20 @@ struct AddQuoteView: View {
                         Button("Anuluj") {
                             dismiss()
                         }
+                        .foregroundColor(appColors.secondaryTextColor)
                     }
                     
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Zapisz") {
                             saveQuote()
                         }
+                        .foregroundColor(appColors.accentColor)
                         .disabled(content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
                 }
                 .onTapGesture {
-                    // Ukryj sugestie po kliknięciu w inne miejsce
                     showingSuggestions = false
                 }
-                // Obsługa przewijania gdy focus na polu tagów
                 .onChange(of: isTagInputFocused) { _, isFocused in
                     if isFocused {
                         withAnimation(.easeInOut(duration: 0.5)) {
@@ -206,4 +222,3 @@ struct AddQuoteView: View {
         dismiss()
     }
 }
-

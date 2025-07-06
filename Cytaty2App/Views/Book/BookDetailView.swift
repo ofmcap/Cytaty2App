@@ -1,29 +1,31 @@
-// Cytaty2App/Views/Book/BookDetailView.swift
 import SwiftUI
 
 struct BookDetailView: View {
     @EnvironmentObject var viewModel: QuoteViewModel
+    @Environment(\.appColors) private var appColors
+
     let book: Book
     @State private var showingAddQuote = false
     @State private var showingEditBook = false
     @State private var refreshToggle = false
-    
+
     // Funkcja pomocnicza do znajdowania aktualnej książki z ViewModel
     private var currentBook: Book {
         return viewModel.books.first { $0.id == book.id } ?? book
     }
-    
+
     var body: some View {
         VStack {
             BookHeaderView(book: currentBook)
                 .padding()
-            
+
             if currentBook.quotes.isEmpty {
                 EmptyQuoteView()
             } else {
                 QuoteListView(book: currentBook)
             }
         }
+        .background(appColors.backgroundColor)
         .navigationTitle(currentBook.title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -34,7 +36,6 @@ struct BookDetailView: View {
                     }) {
                         Label("Dodaj cytat", systemImage: "quote.bubble.fill")
                     }
-                    
                     Button(action: {
                         showingEditBook = true
                     }) {
@@ -42,6 +43,7 @@ struct BookDetailView: View {
                     }
                 } label: {
                     Image(systemName: "ellipsis.circle")
+                        .foregroundColor(appColors.accentColor)
                 }
             }
         }
@@ -63,30 +65,25 @@ struct BookDetailView: View {
 }
 
 struct BookHeaderView: View {
+    @Environment(\.appColors) private var appColors
     let book: Book
-    
+
     // Funkcja do konwersji ścieżki na URL
     private func getFullCoverURL() -> URL? {
         guard let coverURL = book.coverURL else { return nil }
-        
         if coverURL.hasPrefix("http") {
             return URL(string: coverURL)
         } else {
-            // Względna ścieżka w dokumentach
             let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             let fullURL = documentsDirectory.appendingPathComponent(coverURL)
-            
-            // Sprawdź czy plik istnieje
             if FileManager.default.fileExists(atPath: fullURL.path) {
-                print("📁 Lokalna okładka istnieje: \(fullURL.path)")
                 return fullURL
             } else {
-                print("❌ Lokalna okładka nie istnieje: \(fullURL.path)")
                 return nil
             }
         }
     }
-    
+
     var body: some View {
         HStack(spacing: 20) {
             if let coverURL = getFullCoverURL() {
@@ -94,17 +91,16 @@ struct BookHeaderView: View {
                     switch phase {
                     case .empty:
                         ProgressView()
+                            .tint(appColors.accentColor)
                     case .success(let image):
                         image
                             .resizable()
                             .aspectRatio(contentMode: .fit)
-                    case .failure(let error):
+                    case .failure:
                         Image(systemName: "book")
                             .resizable()
                             .aspectRatio(contentMode: .fit)
-                            .onAppear {
-                                print("❌ Błąd ładowania okładki w BookHeader: \(error.localizedDescription)")
-                            }
+                            .foregroundColor(appColors.secondaryTextColor)
                     @unknown default:
                         EmptyView()
                     }
@@ -116,28 +112,29 @@ struct BookHeaderView: View {
                     .resizable()
                     .aspectRatio(contentMode: .fit)
                     .frame(width: 100, height: 140)
-                    .foregroundColor(.gray)
+                    .foregroundColor(appColors.secondaryTextColor)
             }
-            
+
             VStack(alignment: .leading, spacing: 8) {
                 Text(book.title)
                     .font(.title2)
                     .fontWeight(.bold)
-                
+                    .foregroundColor(appColors.primaryTextColor)
+
                 Text(book.author)
                     .font(.headline)
-                    .foregroundColor(.secondary)
-                
+                    .foregroundColor(appColors.secondaryTextColor)
+
                 if let publishYear = book.publishYear {
                     Text("Rok wydania: \(String(publishYear))")
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(appColors.secondaryTextColor)
                 }
-                
+
                 if let isbn = book.isbn {
                     Text("ISBN: \(isbn)")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(appColors.secondaryTextColor)
                 }
             }
         }
@@ -145,35 +142,40 @@ struct BookHeaderView: View {
 }
 
 struct EmptyQuoteView: View {
+    @Environment(\.appColors) private var appColors
+
     var body: some View {
         VStack(spacing: 20) {
             Image(systemName: "text.quote")
                 .font(.system(size: 60))
-                .foregroundColor(.gray)
-            
+                .foregroundColor(appColors.secondaryTextColor)
+
             Text("Brak cytatów")
                 .font(.title2)
-                .foregroundColor(.gray)
-            
+                .foregroundColor(appColors.primaryTextColor)
+
             Text("Dodaj pierwszy cytat z tej książki")
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundColor(appColors.secondaryTextColor)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(appColors.backgroundColor)
     }
 }
 
 struct QuoteListView: View {
     @EnvironmentObject var viewModel: QuoteViewModel
+    @Environment(\.appColors) private var appColors
+
     let book: Book
     @State private var editingQuote: Quote?
     @State private var refreshToggle = false
-    
+
     // Funkcja pomocnicza do znajdowania aktualnej książki z ViewModel
     private var currentBook: Book {
         return viewModel.books.first { $0.id == book.id } ?? book
     }
-    
+
     var body: some View {
         List {
             ForEach(currentBook.quotes.sorted(by: { $0.addedDate > $1.addedDate })) { quote in
@@ -191,7 +193,7 @@ struct QuoteListView: View {
                     }) {
                         Label("Edytuj", systemImage: "pencil")
                     }
-                    
+
                     Button(role: .destructive, action: {
                         viewModel.deleteQuote(quote, from: currentBook)
                         refreshToggle.toggle()
@@ -212,5 +214,14 @@ struct QuoteListView: View {
             )
         }
         .id(refreshToggle)
+        .background(appColors.backgroundColor)
+        .scrollContentBackground(.hidden)
+        .onAppear {
+            UITableView.appearance().backgroundColor = UIColor.clear
+        }
+        .onDisappear {
+            UITableView.appearance().backgroundColor = nil
+        }
+        .listRowBackground(appColors.backgroundColor)
     }
 }
