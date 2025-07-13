@@ -2,92 +2,147 @@ import SwiftUI
 
 struct BookListView: View {
     @EnvironmentObject var viewModel: QuoteViewModel
-    @EnvironmentObject var colorSchemeService: ColorSchemeService
-    @State private var showingSearchBooks = false
-    @State private var searchText = ""
-    @Environment(\.selectedTabSubject) var tabSubject
-    @Environment(\.dismiss) private var dismiss
-    @Environment(\.appColors) var appColors
+    @Environment(\.appColors) private var appColors
+    @Environment(\.bookSelectionAction) private var onBookSelected
 
-    // Filtrowane książki na podstawie wyszukiwania
-    private var filteredBooks: [Book] {
+    @State private var searchText = ""
+    @State private var showingAddBook = false
+    @State private var refreshToggle = false
+
+    @State private var bookToEdit: Book? = nil
+    @State private var showingEditBook = false
+
+    var filteredBooks: [Book] {
         if searchText.isEmpty {
-            return viewModel.books
+            return viewModel.books.sorted(by: { $0.title < $1.title })
         } else {
-            return viewModel.books.filter { book in
-                book.title.localizedCaseInsensitiveContains(searchText) ||
-                book.author.localizedCaseInsensitiveContains(searchText)
+            return viewModel.books.filter {
+                $0.title.localizedCaseInsensitiveContains(searchText) ||
+                $0.author.localizedCaseInsensitiveContains(searchText)
             }
         }
     }
 
     var body: some View {
         VStack {
-            // Pasek wyszukiwania umieszczony na stałe
-            SearchBar(text: $searchText, placeholder: "Szukaj w mojej bibliotece")
+            SearchBar(text: $searchText, placeholder: "Szukaj książek")
                 .padding(.horizontal)
-                .padding(.top, 8)
 
-            // Lista książek lub komunikat o braku wyników
-            if filteredBooks.isEmpty && !searchText.isEmpty {
-                VStack(spacing: 20) {
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 60))
-                        .foregroundColor(appColors.secondaryTextColor)
-
-                    Text("Brak wyników")
-                        .font(.title2)
-                        .foregroundColor(appColors.primaryTextColor)
-
-                    Text("Nie znaleziono książek pasujących do: \"\(searchText)\"")
-                        .font(.subheadline)
-                        .foregroundColor(appColors.secondaryTextColor)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal)
-                }
-                .padding()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(appColors.backgroundColor)
+            if filteredBooks.isEmpty {
+                emptyBooksView
             } else {
                 List {
-                    ForEach(filteredBooks) { book in
-                        NavigationLink(destination: BookDetailView(book: book)) {
+                    ForEach(filteredBooks, id: \.id) { book in
+                        Button(action: {
+                            onBookSelected(book)
+                        }) {
                             BookRowView(book: book)
                         }
+                        .buttonStyle(PlainButtonStyle())
+                        .contextMenu {
+                            Button(action: {
+                                bookToEdit = book
+                                showingEditBook = true
+                            }) {
+                                Label("Edytuj", systemImage: "pencil")
+                            }
+                            Button(role: .destructive) {
+                                if let index = viewModel.books.firstIndex(where: { $0.id == book.id }) {
+                                    viewModel.deleteBook(at: IndexSet(integer: index))
+                                    refreshToggle.toggle()
+                                }
+                            } label: {
+                                Label("Usuń", systemImage: "trash")
+                            }
+                        }
                     }
-                    .onDelete(perform: viewModel.deleteBook)
                 }
                 .listStyle(InsetGroupedListStyle())
-                .scrollContentBackground(.hidden)
+                .id(refreshToggle)
                 .background(appColors.backgroundColor)
-                .onAppear {
-                    UITableView.appearance().backgroundColor = UIColor.clear
-                }
-                .onDisappear {
-                    UITableView.appearance().backgroundColor = nil
-                }
-                .listRowBackground(appColors.backgroundColor)
+                .scrollContentBackground(.hidden)
             }
         }
         .background(appColors.backgroundColor)
+        .navigationTitle("Moje książki")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button(action: {
-                    showingSearchBooks = true
+                    showingAddBook = true
                 }) {
                     Image(systemName: "plus")
                         .foregroundColor(appColors.accentColor)
                 }
             }
         }
-        .sheet(isPresented: $showingSearchBooks) {
-            SearchBooksView()
-        }
-        .onReceive(tabSubject.$selectedTab) { tab in
-            if tab == 0 {
-                // Reset nawigacji dla zakładki książek
-                dismiss()
+        .sheet(isPresented: $showingAddBook) {
+            AddEditBookView(isEditing: false) { newBook in
+                viewModel.addBook(newBook)
+                showingAddBook = false
+                refreshToggle.toggle()
             }
         }
+        .sheet(isPresented: $showingEditBook, onDismiss: {
+            bookToEdit = nil
+        }) {
+            if let bookToEdit = bookToEdit {
+                AddEditBookView(isEditing: true, book: bookToEdit) { updatedBook in
+                    viewModel.updateBook(updatedBook)
+                    showingEditBook = false
+                    refreshToggle.toggle()
+                }
+            } else {
+                Text("Błąd: brak książki do edycji")
+            }
+        }
+    }
+
+    private var emptyBooksView: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "book")
+                .font(.system(size: 60))
+                .foregroundColor(appColors.secondaryTextColor)
+
+            Text("Brak książek")
+                .font(.title2)
+                .foregroundColor(appColors.primaryTextColor)
+
+            Text("Dodaj książki, aby zobaczyć je tutaj")
+                .font(.subheadline)
+                .foregroundColor(appColors.secondaryTextColor)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(appColors.backgroundColor)
+    }
+}
+
+// MARK: - Selection Modifier i rozszerzenie dla BookListView
+
+struct BookSelectionModifier: ViewModifier {
+    let onSelect: (Book) -> Void
+
+    func body(content: Content) -> some View {
+        content.environment(\.bookSelectionAction, onSelect)
+    }
+}
+
+extension View {
+    func onBookSelected(_ action: @escaping (Book) -> Void) -> some View {
+        modifier(BookSelectionModifier(onSelect: action))
+    }
+}
+
+
+
+// Environment Key dla bookSelectionAction
+
+private struct BookSelectionActionKey: EnvironmentKey {
+    static let defaultValue: (Book) -> Void = { _ in }
+}
+
+extension EnvironmentValues {
+    var bookSelectionAction: (Book) -> Void {
+        get { self[BookSelectionActionKey.self] }
+        set { self[BookSelectionActionKey.self] = newValue }
     }
 }

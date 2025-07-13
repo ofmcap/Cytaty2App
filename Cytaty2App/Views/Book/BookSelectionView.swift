@@ -1,25 +1,25 @@
 import SwiftUI
 
-struct TagFilterView: View {
+struct BookSelectionView: View {
     @Environment(\.dismiss) var dismiss
-    @Binding var selectedTag: String?
-    let allTags: [String]
+    @EnvironmentObject var viewModel: QuoteViewModel
+    @Binding var selectedBook: Book?
+    @Binding var showingAddQuoteSheet: Bool
     @Environment(\.appColors) private var appColors
 
     var body: some View {
         NavigationStack {
             List {
-                ForEach(allTags, id: \.self) { tag in
+                ForEach(viewModel.books) { book in
                     Button(action: {
-                        selectedTag = tag
+                        selectedBook = book
                         dismiss()
                     }) {
-                        Text(tag)
-                            .foregroundColor(appColors.primaryTextColor)
+                        BookRowView(book: book)
                     }
                 }
             }
-            .navigationTitle("Filtruj tagi")
+            .navigationTitle("Wybierz książkę")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Anuluj") {

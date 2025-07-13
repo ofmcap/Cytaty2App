@@ -2,16 +2,15 @@ import SwiftUI
 
 struct AllQuotesView: View {
     @EnvironmentObject var viewModel: QuoteViewModel
+    @Environment(\.appColors) private var appColors
+    @Environment(\.quoteSelectionAction) private var onQuoteSelected
+
     @State private var searchText = ""
     @State private var selectedTag: String?
     @State private var showingAddQuoteSheet = false
     @State private var selectedBook: Book?
     @State private var refreshToggle = false
     @State private var showingTagFilter = false
-    @State private var selectedQuote: QuoteWithBook? = nil
-    @Environment(\.selectedTabSubject) var tabSubject
-    @Environment(\.dismiss) private var dismiss
-    @Environment(\.appColors) var appColors
 
     let initialTagFilter: String?
 
@@ -153,9 +152,6 @@ struct AllQuotesView: View {
                 BookSelectionView(selectedBook: $selectedBook, showingAddQuoteSheet: $showingAddQuoteSheet)
             }
         }
-        .sheet(isPresented: $showingTagFilter) {
-            TagFilterView(selectedTag: $selectedTag, allTags: allTags)
-        }
         .alert("Brak książek", isPresented: Binding<Bool>(
             get: { selectedBook == nil && viewModel.books.isEmpty },
             set: { _ in selectedBook = nil }
@@ -178,31 +174,6 @@ struct AllQuotesView: View {
         }
         #endif
         .id(refreshToggle)
-        .onReceive(tabSubject.$selectedTab) { tab in
-            if tab == 1 {
-                dismiss()
-            }
-        }
-        .onAppear {
-            if let tagFilter = initialTagFilter {
-                selectedTag = tagFilter
-            }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("NavigateToQuotesWithTag"))) { notification in
-            if let tag = notification.object as? String {
-                selectedTag = tag
-                refreshToggle.toggle()
-            }
-        }
-        .navigationDestination(isPresented: Binding(
-            get: { selectedQuote != nil },
-            set: { isActive in if !isActive { selectedQuote = nil } }
-        )) {
-            if let quoteWithBook = selectedQuote {
-                QuoteDetailView(quote: quoteWithBook.quote, book: quoteWithBook.book)
-                    .onDisappear { refreshToggle.toggle() }
-            }
-        }
     }
 
     private var emptyQuotesView: some View {
@@ -276,7 +247,7 @@ struct AllQuotesView: View {
         List {
             ForEach(filteredQuotes) { quoteWithBook in
                 Button(action: {
-                    selectedQuote = quoteWithBook
+                    onQuoteSelected(quoteWithBook.quote, quoteWithBook.book)
                 }) {
                     HStack(alignment: .center, spacing: 12) {
                         QuoteListItemView(quoteWithBook: quoteWithBook)
@@ -303,32 +274,31 @@ struct AllQuotesView: View {
     }
 }
 
-// Widok wyboru książki
-struct BookSelectionView: View {
-    @Environment(\.dismiss) var dismiss
-    @EnvironmentObject var viewModel: QuoteViewModel
-    @Binding var selectedBook: Book?
-    @Binding var showingAddQuoteSheet: Bool
+// MARK: - Selection Modifier i rozszerzenie dla AllQuotesView
 
-    var body: some View {
-        NavigationStack {
-            List {
-                ForEach(viewModel.books) { book in
-                    Button(action: {
-                        selectedBook = book
-                    }) {
-                        BookRowView(book: book)
-                    }
-                }
-            }
-            .navigationTitle("Wybierz książkę")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Anuluj") {
-                        dismiss()
-                    }
-                }
-            }
-        }
+struct QuoteSelectionModifier: ViewModifier {
+    let onSelect: (Quote, Book) -> Void
+
+    func body(content: Content) -> some View {
+        content.environment(\.quoteSelectionAction, onSelect)
+    }
+}
+
+extension View {
+    func onQuoteSelected(_ action: @escaping (Quote, Book) -> Void) -> some View {
+        modifier(QuoteSelectionModifier(onSelect: action))
+    }
+}
+
+// Environment Key dla quoteSelectionAction
+
+private struct QuoteSelectionActionKey: EnvironmentKey {
+    static let defaultValue: (Quote, Book) -> Void = { _, _ in }
+}
+
+extension EnvironmentValues {
+    var quoteSelectionAction: (Quote, Book) -> Void {
+        get { self[QuoteSelectionActionKey.self] }
+        set { self[QuoteSelectionActionKey.self] = newValue }
     }
 }

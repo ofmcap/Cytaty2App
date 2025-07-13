@@ -1,95 +1,104 @@
 import SwiftUI
 
 struct ExportView: View {
-    let books: [Book]
     @Environment(\.dismiss) var dismiss
-    @State private var exportSuccess = false
-    @State private var exportError: String?
-    
+    @EnvironmentObject var viewModel: QuoteViewModel
+    @Environment(\.appColors) private var appColors
+
+    @State private var exportMessage: String = ""
+    @State private var showingShareSheet: Bool = false
+    @State private var exportedFileURL: URL?
+
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 20) {
-                if exportSuccess {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 80))
-                        .foregroundColor(.green)
+                Image(systemName: "square.and.arrow.up.fill")
+                    .font(.system(size: 80))
+                    .foregroundColor(appColors.accentColor)
+
+                Text("Eksportuj dane")
+                    .font(.title)
+                    .fontWeight(.bold)
+                    .foregroundColor(appColors.primaryTextColor)
+
+                Text("Wyeksportuj wszystkie swoje książki i cytaty do pliku JSON.")
+                    .font(.body)
+                    .foregroundColor(appColors.secondaryTextColor)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+
+                Button(action: {
+                    exportData()
+                }) {
+                    Label("Eksportuj dane", systemImage: "doc.badge.plus")
+                        .font(.headline)
                         .padding()
-                    
-                    Text("Eksport zakończony pomyślnie")
-                        .font(.title2)
-                    
-                    Text("Dane zostały zapisane do pliku w folderze Dokumenty")
-                        .multilineTextAlignment(.center)
-                        .foregroundColor(.secondary)
-                        .padding()
-                    
-                    Button("Zamknij") {
-                        dismiss()
-                    }
-                    .buttonStyle(.borderedProminent)
-                } else if let error = exportError {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.system(size: 80))
-                        .foregroundColor(.orange)
-                        .padding()
-                    
-                    Text("Błąd eksportu")
-                        .font(.title2)
-                    
-                    Text(error)
-                        .multilineTextAlignment(.center)
-                        .foregroundColor(.secondary)
-                        .padding()
-                    
-                    Button("Spróbuj ponownie") {
-                        exportData()
-                    }
-                    .buttonStyle(.borderedProminent)
-                } else {
-                    ProgressView()
-                        .padding()
-                    
-                    Text("Eksportowanie danych...")
-                        .font(.title2)
+                        .frame(maxWidth: .infinity)
+                        .background(appColors.accentColor)
+                        .foregroundColor(appColors.primaryTextColor)
+                        .cornerRadius(10)
                 }
+                .padding(.horizontal)
+
+                if !exportMessage.isEmpty {
+                    Text(exportMessage)
+                        .font(.subheadline)
+                        .foregroundColor(appColors.primaryTextColor)
+                        .padding()
+                        .background(appColors.uiElementColor)
+                        .cornerRadius(8)
+                }
+
+                Spacer()
             }
-            .padding()
-            .navigationTitle("Eksport danych")
+            .padding(.vertical)
+            .navigationTitle("Eksportuj")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Anuluj") {
+                    Button("Zamknij") {
                         dismiss()
                     }
                 }
             }
-            .onAppear {
-                exportData()
-            }
+            .background(appColors.backgroundColor)
+            .sheet(isPresented: $showingShareSheet, content: {
+                if let url = exportedFileURL {
+                    ShareSheet(activityItems: [url])
+                }
+            })
         }
     }
-    
+
     private func exportData() {
         do {
             let encoder = JSONEncoder()
             encoder.outputFormatting = .prettyPrinted
-            encoder.dateEncodingStrategy = .iso8601
-            let data = try encoder.encode(books)
-            
-            let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            let fileName = "cytaty_eksport_\(formattedDate()).json"
-            let fileURL = documentsDirectory.appendingPathComponent(fileName)
-            
+            let data = try encoder.encode(viewModel.books)
+
+            let filename = "cytaty2app_export_\(Date().timeIntervalSince1970).json"
+            let tempDir = FileManager.default.temporaryDirectory
+            let fileURL = tempDir.appendingPathComponent(filename)
+
             try data.write(to: fileURL)
-            exportSuccess = true
+            exportedFileURL = fileURL
+            showingShareSheet = true
+            exportMessage = "Pomyślnie wyeksportowano dane."
         } catch {
-            exportError = "Nie udało się zapisać danych: \(error.localizedDescription)"
+            exportMessage = "Błąd eksportu: \(error.localizedDescription)"
         }
     }
-    
-    private func formattedDate() -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd_HH-mm"
-        return formatter.string(from: Date())
+}
+
+// Pomocnicza struktura do ShareSheet
+struct ShareSheet: UIViewControllerRepresentable {
+    var activityItems: [Any]
+    var applicationActivities: [UIActivity]? = nil
+
+    func makeUIViewController(context: UIViewControllerRepresentableContext<ShareSheet>) -> UIActivityViewController {
+        let controller = UIActivityViewController(activityItems: activityItems, applicationActivities: applicationActivities)
+        return controller
     }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: UIViewControllerRepresentableContext<ShareSheet>) {}
 }

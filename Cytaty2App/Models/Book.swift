@@ -1,6 +1,6 @@
 import Foundation
 
-public struct Book: Identifiable, Codable, Equatable {
+public struct Book: Identifiable, Codable, Equatable, Hashable {
     public var id: String = UUID().uuidString
     public var title: String
     public var author: String
@@ -9,7 +9,7 @@ public struct Book: Identifiable, Codable, Equatable {
     public var publishYear: Int?
     public var addedDate: Date = Date()
     public var quotes: [Quote] = []
-    
+
     public init(
         id: String = UUID().uuidString,
         title: String,
@@ -32,5 +32,9 @@ public struct Book: Identifiable, Codable, Equatable {
 
     public static func == (lhs: Book, rhs: Book) -> Bool {
         return lhs.id == rhs.id
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
     }
 }

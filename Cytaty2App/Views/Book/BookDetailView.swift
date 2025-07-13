@@ -3,6 +3,7 @@ import SwiftUI
 struct BookDetailView: View {
     @EnvironmentObject var viewModel: QuoteViewModel
     @Environment(\.appColors) private var appColors
+    @Environment(\.quoteSelectionAction) private var onQuoteSelected
 
     let book: Book
     @State private var showingAddQuote = false
@@ -23,6 +24,9 @@ struct BookDetailView: View {
                 EmptyQuoteView()
             } else {
                 QuoteListView(book: currentBook)
+                    .onQuoteSelected { quote in
+                        onQuoteSelected(quote, currentBook)
+                    }
             }
         }
         .background(appColors.backgroundColor)
@@ -166,6 +170,7 @@ struct EmptyQuoteView: View {
 struct QuoteListView: View {
     @EnvironmentObject var viewModel: QuoteViewModel
     @Environment(\.appColors) private var appColors
+    @Environment(\.quoteSelectionAction) private var onQuoteSelected
 
     let book: Book
     @State private var editingQuote: Quote?
@@ -179,14 +184,12 @@ struct QuoteListView: View {
     var body: some View {
         List {
             ForEach(currentBook.quotes.sorted(by: { $0.addedDate > $1.addedDate })) { quote in
-                NavigationLink(destination:
-                    QuoteDetailView(quote: quote, book: currentBook)
-                        .onDisappear {
-                            refreshToggle.toggle()
-                        }
-                ) {
+                Button(action: {
+                    onQuoteSelected(quote, currentBook)
+                }) {
                     QuoteRowView(quote: quote)
                 }
+                .buttonStyle(PlainButtonStyle())
                 .contextMenu {
                     Button(action: {
                         editingQuote = quote
@@ -194,10 +197,10 @@ struct QuoteListView: View {
                         Label("Edytuj", systemImage: "pencil")
                     }
 
-                    Button(role: .destructive, action: {
+                    Button(role: .destructive) {
                         viewModel.deleteQuote(quote, from: currentBook)
                         refreshToggle.toggle()
-                    }) {
+                    } label: {
                         Label("Usuń", systemImage: "trash")
                     }
                 }
@@ -223,5 +226,31 @@ struct QuoteListView: View {
             UITableView.appearance().backgroundColor = nil
         }
         .listRowBackground(appColors.backgroundColor)
+    }
+}
+
+// Extension do obsługi callbacku wyboru cytatu w QuoteListView
+extension QuoteListView {
+    func onQuoteSelected(_ action: @escaping (Quote) -> Void) -> some View {
+        modifier(QuoteSelectionSingleModifier(onSelect: action))
+    }
+}
+
+struct QuoteSelectionSingleModifier: ViewModifier {
+    let onSelect: (Quote) -> Void
+
+    func body(content: Content) -> some View {
+        content.environment(\.quoteSelectionSingleAction, onSelect)
+    }
+}
+
+private struct QuoteSelectionSingleActionKey: EnvironmentKey {
+    static let defaultValue: (Quote) -> Void = { _ in }
+}
+
+extension EnvironmentValues {
+    var quoteSelectionSingleAction: (Quote) -> Void {
+        get { self[QuoteSelectionSingleActionKey.self] }
+        set { self[QuoteSelectionSingleActionKey.self] = newValue }
     }
 }
