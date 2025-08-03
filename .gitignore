@@ -27,3 +27,6 @@ Pods/
 
 # Carthage
 Carthage/Build/
+
+build_log.txt
+Cytaty2App.xcodeproj/build_log.txt
