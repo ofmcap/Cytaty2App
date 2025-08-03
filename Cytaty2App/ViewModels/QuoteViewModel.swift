@@ -9,6 +9,7 @@ class QuoteViewModel: ObservableObject {
     @Published var isSearching: Bool = false
     @Published var errorMessage: String?
     @Published var newlyAddedBook: Book? = nil
+    
 
     private let storageService = StorageService.shared
     private let networkService = DefaultNetworkService()
@@ -128,3 +129,4 @@ class QuoteViewModel: ObservableObject {
         newlyAddedBook = nil
     }
 }
+    

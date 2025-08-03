@@ -1,104 +1,99 @@
 import SwiftUI
 
-enum AppScreen: Hashable {
-    case booksList
-    case bookDetail(Book)
-    case allQuotes(initialTagFilter: String? = nil)
-    case quoteDetail(Quote, Book)
-    case settings
-}
-
 struct RootView: View {
     @EnvironmentObject var viewModel: QuoteViewModel
     @Environment(\.appColors) var appColors
-
-    @State private var selectedTab: AppScreen = .booksList
-    @State private var navigationPath = NavigationPath()
-    @State private var tagToFilter: String? = nil
-
+    @StateObject private var coordinator = NavigationCoordinator()
+    
     var body: some View {
-        NavigationStack(path: $navigationPath) {
-            tabView(for: selectedTab)
-                .navigationDestination(for: AppScreen.self) { screen in
-                    switch screen {
-                    case .booksList:
-                        BookListView()
-                            .navigationTitle("Moje książki")
-                    case .bookDetail(let book):
-                        BookDetailView(book: book)
-                    case .allQuotes(let initialTagFilter):
-                        AllQuotesView(initialTagFilter: initialTagFilter)
-                            .navigationTitle("Wszystkie cytaty")
-                    case .quoteDetail(let quote, let book):
-                        QuoteDetailView(quote: quote, book: book)
-                    case .settings:
-                        SettingsView()
-                            .navigationTitle("Ustawienia")
+        TabView(selection: $coordinator.selectedTab) {
+            // Zakładka Książki
+            NavigationStack(path: $coordinator.booksTabPath) {
+                BookListView()
+                    .navigationTitle("Moje książki")
+                    .onBookSelected { book in
+                        coordinator.navigateToBookDetail(book)
                     }
-                }
-                .toolbar {
-                    ToolbarItem(placement: .principal) {
-                        tabPicker
+                    .navigationDestination(for: AppScreen.self) { screen in
+                        destinationView(for: screen)
                     }
-                }
-                .tint(appColors.accentColor)
-                .onReceive(NotificationCenter.default.publisher(for: Notification.Name("NavigateToQuotesWithTag"))) { notification in
-                    if let tag = notification.object as? String {
-                        tagToFilter = tag
-                        selectedTab = .allQuotes(initialTagFilter: tag)
-                        navigationPath.removeLast(navigationPath.count)
+            }
+            .tabItem {
+                Label("Książki", systemImage: "book")
+            }
+            .tag(AppScreen.booksList)
+            
+            // Zakładka Cytaty
+            NavigationStack(path: $coordinator.quotesTabPath) {
+                AllQuotesView(initialTagFilter: coordinator.currentTagFilter)
+                    .navigationTitle("Wszystkie cytaty")
+                    .onQuoteSelected { quote, book in
+                        coordinator.navigateToQuoteDetail(quote: quote, book: book)
                     }
-                }
-                // 🆕 OBSŁUGA NAWIGACJI PO DODANIU KSIĄŻKI
-                .onReceive(viewModel.$newlyAddedBook) { newBook in
-                    if let book = newBook {
-                        // Nawiguj do szczegółów nowo dodanej książki
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            navigationPath.append(AppScreen.bookDetail(book))
-                            viewModel.clearNewlyAddedBook()
-                        }
+                    .navigationDestination(for: AppScreen.self) { screen in
+                        destinationView(for: screen)
                     }
+            }
+            .tabItem {
+                Label("Cytaty", systemImage: "quote.bubble")
+            }
+            .tag(AppScreen.allQuotes())
+            
+            // Zakładka Ustawienia
+            NavigationStack(path: $coordinator.settingsTabPath) {
+                SettingsView()
+                    .navigationTitle("Ustawienia")
+                    .navigationDestination(for: AppScreen.self) { screen in
+                        destinationView(for: screen)
+                    }
+            }
+            .tabItem {
+                Label("Ustawienia", systemImage: "gear")
+            }
+            .tag(AppScreen.settings)
+        }
+        .tint(appColors.accentColor)
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("NavigateToQuotesWithTag"))) { notification in
+            if let tag = notification.object as? String {
+                coordinator.navigateToQuotesWithTag(tag)
+            }
+        }
+        .onReceive(viewModel.$newlyAddedBook) { newBook in
+            if let book = newBook {
+                // Nawiguj do szczegółów nowo dodanej książki
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    coordinator.navigateToBookDetail(book)
+                    viewModel.clearNewlyAddedBook()
                 }
+            }
         }
     }
-
+    
     @ViewBuilder
-    private func tabView(for screen: AppScreen) -> some View {
+    private func destinationView(for screen: AppScreen) -> some View {
         switch screen {
         case .booksList:
             BookListView()
                 .navigationTitle("Moje książki")
                 .onBookSelected { book in
-                    navigationPath.append(AppScreen.bookDetail(book))
+                    coordinator.navigateToBookDetail(book)
                 }
         case .bookDetail(let book):
             BookDetailView(book: book)
+                .onQuoteSelected { quote, book in
+                    coordinator.navigateToQuoteDetail(quote: quote, book: book)
+                }
         case .allQuotes(let initialTagFilter):
             AllQuotesView(initialTagFilter: initialTagFilter)
                 .navigationTitle("Wszystkie cytaty")
                 .onQuoteSelected { quote, book in
-                    navigationPath.append(AppScreen.quoteDetail(quote, book))
+                    coordinator.navigateToQuoteDetail(quote: quote, book: book)
                 }
         case .quoteDetail(let quote, let book):
             QuoteDetailView(quote: quote, book: book)
         case .settings:
             SettingsView()
                 .navigationTitle("Ustawienia")
-        }
-    }
-
-    private var tabPicker: some View {
-        Picker("", selection: $selectedTab) {
-            Label("Książki", systemImage: "book").tag(AppScreen.booksList)
-            Label("Cytaty", systemImage: "quote.bubble").tag(AppScreen.allQuotes())
-            Label("Ustawienia", systemImage: "gear").tag(AppScreen.settings)
-        }
-        .pickerStyle(SegmentedPickerStyle())
-        .onChange(of: selectedTab) { _, newValue in
-            navigationPath.removeLast(navigationPath.count)
-            if case .allQuotes = newValue {
-                tagToFilter = nil
-            }
         }
     }
 }
