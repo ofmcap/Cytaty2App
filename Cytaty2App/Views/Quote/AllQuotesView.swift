@@ -5,175 +5,144 @@ struct AllQuotesView: View {
     @Environment(\.appColors) private var appColors
     @Environment(\.quoteSelectionAction) private var onQuoteSelected
 
-    @State private var searchText = ""
-    @State private var selectedTag: String?
-    @State private var showingAddQuoteSheet = false
-    @State private var selectedBook: Book?
-    @State private var refreshToggle = false
-    @State private var showingTagFilter = false
-
     let initialTagFilter: String?
 
-    init(initialTagFilter: String? = nil) {
-        self.initialTagFilter = initialTagFilter
-    }
+    @State private var searchText = ""
+    @State private var selectedTag: String? = nil
+    @State private var showingTagFilter = false
+    @State private var refreshToggle = false
 
-    var allQuotes: [QuoteWithBook] {
-        var quotes: [QuoteWithBook] = []
+    // Wszystkie cytaty z książkami
+    private var allQuotesWithBooks: [QuoteWithBook] {
+        var quotesWithBooks: [QuoteWithBook] = []
         for book in viewModel.books {
             for quote in book.quotes {
-                quotes.append(QuoteWithBook(quote: quote, book: book))
+                quotesWithBooks.append(QuoteWithBook(quote: quote, book: book))
             }
         }
-        return quotes.sorted(by: { $0.quote.addedDate > $1.quote.addedDate })
+        return quotesWithBooks
     }
 
-    var filteredQuotes: [QuoteWithBook] {
-        allQuotes.filter { quoteWithBook in
-            let matchesSearch = searchText.isEmpty ||
+    // Filtrowane cytaty
+    private var filteredQuotes: [QuoteWithBook] {
+        var quotes = allQuotesWithBooks
+
+        // Filtruj po tagu
+        if let tag = selectedTag ?? initialTagFilter {
+            quotes = quotes.filter { quoteWithBook in
+                quoteWithBook.quote.tags.contains { $0.lowercased().contains(tag.lowercased()) }
+            }
+        }
+
+        // Filtruj po tekście wyszukiwania
+        if !searchText.isEmpty {
+            quotes = quotes.filter { quoteWithBook in
                 quoteWithBook.quote.content.localizedCaseInsensitiveContains(searchText) ||
+                quoteWithBook.quote.tags.joined(separator: " ").localizedCaseInsensitiveContains(searchText) ||
                 quoteWithBook.book.title.localizedCaseInsensitiveContains(searchText) ||
                 quoteWithBook.book.author.localizedCaseInsensitiveContains(searchText)
-
-            let matchesTag = selectedTag == nil || quoteWithBook.quote.tags.contains(selectedTag!)
-
-            return matchesSearch && matchesTag
-        }
-    }
-
-    var allTags: [String] {
-        var tags = Set<String>()
-        for book in viewModel.books {
-            for quote in book.quotes {
-                tags.formUnion(quote.tags)
             }
         }
-        return Array(tags).sorted()
+
+        // Sortuj po dacie dodania (najnowsze na górze)
+        return quotes.sorted { $0.quote.addedDate > $1.quote.addedDate }
     }
 
-    private func countQuotesForTag(_ tag: String) -> Int {
-        return allQuotes.filter { $0.quote.tags.contains(tag) }.count
+    // Wszystkie dostępne tagi
+    private var allTags: [String] {
+        let tags = allQuotesWithBooks.flatMap { $0.quote.tags }
+        return Array(Set(tags)).sorted()
     }
 
     var body: some View {
-        VStack {
-            if allQuotes.isEmpty {
+        VStack(spacing: 0) {
+            // Search Bar
+            SearchBar(text: $searchText, placeholder: "Szukaj cytatów...")
+                .padding(.horizontal)
+                .padding(.top, 8)
+
+            // Tag Filter Button
+            if !allTags.isEmpty {
+                HStack {
+                    Button(action: {
+                        showingTagFilter = true
+                    }) {
+                        HStack {
+                            Image(systemName: "tag")
+                            Text(selectedTag ?? initialTagFilter ?? "Wszystkie tagi")
+                            Image(systemName: "chevron.down")
+                        }
+                        .foregroundColor(appColors.accentColor)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(appColors.accentColor.opacity(0.1))
+                        .cornerRadius(8)
+                    }
+
+                    if selectedTag != nil || initialTagFilter != nil {
+                        Button(action: {
+                            selectedTag = nil
+                        }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(appColors.secondaryTextColor)
+                        }
+                    }
+
+                    Spacer()
+
+                    Text("\(filteredQuotes.count) cytatów")
+                        .font(.caption)
+                        .foregroundColor(appColors.secondaryTextColor)
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+            }
+
+            // Quotes List
+            if filteredQuotes.isEmpty {
                 emptyQuotesView
             } else {
-                VStack {
-                    SearchBar(text: $searchText, placeholder: "Szukaj cytatów")
-                        .padding(.horizontal)
-
-                    // Pasek z filtrem tagów
-                    HStack {
-                        if let selectedTag = selectedTag {
-                            HStack {
-                                Image(systemName: "tag.fill")
-                                    .foregroundColor(appColors.accentColor)
-                                    .font(.caption)
-
-                                Text(selectedTag)
-                                    .font(.subheadline)
-                                    .foregroundColor(appColors.accentColor)
-                                    .fontWeight(.medium)
-
-                                Text("(\(countQuotesForTag(selectedTag)))")
-                                    .font(.caption)
-                                    .foregroundColor(appColors.secondaryTextColor)
-
-                                Button(action: {
-                                    self.selectedTag = nil
-                                }) {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .foregroundColor(appColors.secondaryTextColor)
-                                        .font(.caption)
-                                }
-                            }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                            .background(appColors.accentColor.opacity(0.1))
-                            .cornerRadius(16)
-                        } else {
-                            Text("Wszystkie cytaty")
-                                .font(.headline)
-                                .foregroundColor(appColors.primaryTextColor)
-                        }
-
-                        Spacer()
-
+                List {
+                    ForEach(filteredQuotes, id: \.quote.id) { quoteWithBook in
                         Button(action: {
-                            showingTagFilter = true
+                            onQuoteSelected(quoteWithBook.quote, quoteWithBook.book)
                         }) {
-                            HStack {
-                                Text("Filtry")
-                                    .font(.subheadline)
-                                    .foregroundColor(appColors.primaryTextColor)
-                                Image(systemName: allTags.isEmpty ? "line.horizontal.3.decrease.circle" : "line.horizontal.3.decrease.circle.fill")
-                                    .foregroundColor(appColors.accentColor)
-                            }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                            .background(appColors.backgroundColor.opacity(0.8))
-                            .cornerRadius(8)
+                            QuoteListItemView(quoteWithBook: quoteWithBook)
                         }
-                        .disabled(allTags.isEmpty)
-                    }
-                    .padding(.horizontal)
-                    .padding(.vertical, 6)
+                        .buttonStyle(PlainButtonStyle())
+                        .contextMenu {
+                            Button(action: {
+                                // Nawiguj do książki
+                            }) {
+                                Label("Zobacz książkę", systemImage: "book")
+                            }
 
-                    if filteredQuotes.isEmpty {
-                        noResultsView
-                    } else {
-                        quotesList
+                            Button(action: {
+                                shareQuote(quoteWithBook.quote, from: quoteWithBook.book)
+                            }) {
+                                Label("Udostępnij", systemImage: "square.and.arrow.up")
+                            }
+                        }
                     }
                 }
+                .listStyle(InsetGroupedListStyle())
+                .background(appColors.backgroundColor)
+                .scrollContentBackground(.hidden)
+                .id(refreshToggle)
             }
         }
         .background(appColors.backgroundColor)
-        .navigationTitle("Wszystkie cytaty")
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button(action: {
-                    if !viewModel.books.isEmpty {
-                        showingAddQuoteSheet = true
-                    } else {
-                        selectedBook = nil
-                    }
-                }) {
-                    Image(systemName: "plus")
-                        .foregroundColor(appColors.accentColor)
-                }
+        .onAppear {
+            if let initialTag = initialTagFilter {
+                selectedTag = initialTag
             }
         }
-        .sheet(isPresented: $showingAddQuoteSheet) {
-            if let book = selectedBook {
-                AddQuoteView(book: book)
-            } else {
-                BookSelectionView(selectedBook: $selectedBook, showingAddQuoteSheet: $showingAddQuoteSheet)
-            }
+        .sheet(isPresented: $showingTagFilter) {
+            TagFilterView(
+                selectedTag: $selectedTag,
+                allTags: allTags
+            )
         }
-        .alert("Brak książek", isPresented: Binding<Bool>(
-            get: { selectedBook == nil && viewModel.books.isEmpty },
-            set: { _ in selectedBook = nil }
-        )) {
-            Button("OK", role: .cancel) { }
-        } message: {
-            Text("Dodaj najpierw książkę, aby móc dodać cytat.")
-        }
-        #if compiler(>=5.9) && canImport(SwiftUI)
-        .onChange(of: selectedBook) { oldBook, newBook in
-            if newBook != nil {
-                showingAddQuoteSheet = true
-            }
-        }
-        #else
-        .onChange(of: selectedBook) { newBook in
-            if newBook != nil {
-                showingAddQuoteSheet = true
-            }
-        }
-        #endif
-        .id(refreshToggle)
     }
 
     private var emptyQuotesView: some View {
@@ -182,100 +151,54 @@ struct AllQuotesView: View {
                 .font(.system(size: 60))
                 .foregroundColor(appColors.secondaryTextColor)
 
-            Text("Brak cytatów")
-                .font(.title2)
-                .foregroundColor(appColors.primaryTextColor)
-
-            Text("Dodaj cytaty do swoich książek, aby zobaczyć je tutaj")
-                .font(.subheadline)
-                .foregroundColor(appColors.secondaryTextColor)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(appColors.backgroundColor)
-    }
-
-    private var noResultsView: some View {
-        VStack(spacing: 20) {
-            Image(systemName: selectedTag != nil ? "tag.slash" : "magnifyingglass")
-                .font(.system(size: 40))
-                .foregroundColor(appColors.secondaryTextColor)
-
-            if selectedTag != nil && searchText.isEmpty {
-                Text("Brak cytatów z tagiem \"\(selectedTag!)\"")
-                    .font(.headline)
+            if selectedTag != nil || initialTagFilter != nil {
+                Text("Brak cytatów z tym tagiem")
+                    .font(.title2)
                     .foregroundColor(appColors.primaryTextColor)
-                    .multilineTextAlignment(.center)
 
                 Text("Spróbuj wybrać inny tag lub usuń filtr")
                     .font(.subheadline)
                     .foregroundColor(appColors.secondaryTextColor)
-            } else if !searchText.isEmpty && selectedTag != nil {
-                Text("Brak pasujących cytatów")
-                    .font(.headline)
+                    .multilineTextAlignment(.center)
+            } else if !searchText.isEmpty {
+                Text("Brak wyników wyszukiwania")
+                    .font(.title2)
                     .foregroundColor(appColors.primaryTextColor)
 
-                Text("Nie znaleziono cytatów pasujących do wyszukiwania i wybranego tagu")
+                Text("Spróbuj innych słów kluczowych")
+                    .font(.subheadline)
+                    .foregroundColor(appColors.secondaryTextColor)
+            } else {
+                Text("Brak cytatów")
+                    .font(.title2)
+                    .foregroundColor(appColors.primaryTextColor)
+
+                Text("Dodaj cytaty do swoich książek, aby zobaczyć je tutaj")
                     .font(.subheadline)
                     .foregroundColor(appColors.secondaryTextColor)
                     .multilineTextAlignment(.center)
-            } else {
-                Text("Brak pasujących cytatów")
-                    .font(.headline)
-                    .foregroundColor(appColors.primaryTextColor)
-
-                Text("Spróbuj zmienić kryteria wyszukiwania")
-                    .font(.subheadline)
-                    .foregroundColor(appColors.secondaryTextColor)
-            }
-
-            if selectedTag != nil {
-                Button("Usuń filtr tagu") {
-                    selectedTag = nil
-                }
-                .buttonStyle(.borderedProminent)
-                .padding(.top, 10)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding()
         .background(appColors.backgroundColor)
     }
 
-    private var quotesList: some View {
-        List {
-            ForEach(filteredQuotes) { quoteWithBook in
-                Button(action: {
-                    onQuoteSelected(quoteWithBook.quote, quoteWithBook.book)
-                }) {
-                    HStack(alignment: .center, spacing: 12) {
-                        QuoteListItemView(quoteWithBook: quoteWithBook)
-                            .padding(.vertical, 10)
-                        Spacer(minLength: 0)
-                        Image(systemName: "chevron.right")
-                            .foregroundColor(appColors.secondaryTextColor)
-                            .font(.system(size: 16, weight: .semibold))
-                    }
-                    .padding(.horizontal, 12)
-                    .background(appColors.uiElementColor)
-                    .cornerRadius(8)
-                }
-                .buttonStyle(PlainButtonStyle())
-                .listRowBackground(appColors.backgroundColor)
-                .listRowInsets(EdgeInsets(top: 14, leading: 0, bottom: 14, trailing: 0))
-                .listRowSeparator(.hidden)
-            }
+    private func shareQuote(_ quote: Quote, from book: Book) {
+        let text = "\"\(quote.content)\"\n\n— \(book.author), \"\(book.title)\""
+
+        let activityViewController = UIActivityViewController(
+            activityItems: [text],
+            applicationActivities: nil
+        )
+
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = windowScene.windows.first {
+            window.rootViewController?.present(activityViewController, animated: true)
         }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        .background(appColors.backgroundColor)
-        .padding(.horizontal) // padding pola cytatu
     }
 }
 
-// MARK: - Selection Modifier i rozszerzenie dla AllQuotesView
-
+// MARK: - Quote Selection Extensions
 struct QuoteSelectionModifier: ViewModifier {
     let onSelect: (Quote, Book) -> Void
 
@@ -290,8 +213,7 @@ extension View {
     }
 }
 
-// Environment Key dla quoteSelectionAction
-
+// Environment Key
 private struct QuoteSelectionActionKey: EnvironmentKey {
     static let defaultValue: (Quote, Book) -> Void = { _, _ in }
 }

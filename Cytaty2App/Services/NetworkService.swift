@@ -1,32 +1,61 @@
 import Foundation
 
 protocol NetworkService {
-    func searchBooks(query: String) async throws -> [Book]
+    func searchBooks(query: String, language: String) async throws -> [Book]  // Dodany language
 }
 
 class DefaultNetworkService: NetworkService {
     private let baseURL = "https://www.googleapis.com/books/v1/volumes"
     
-    func searchBooks(query: String) async throws -> [Book] {
-        guard let encodedQuery = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
-              let url = URL(string: "\(baseURL)?q=\(encodedQuery)") else {
+    func searchBooks(query: String, language: String) async throws -> [Book] {
+        guard let encodedQuery = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
             throw NSError(domain: "InvalidURL", code: 400, userInfo: nil)
         }
         
+        // Udoskonalone query: dodaj maxResults, orderBy i inteligentny filtr autora w q=
+        var modifiedQuery = encodedQuery
+        if query.lowercased().contains("autor:") {  // Zachowany Twój logic
+            // Przykład: Jeśli query = "harry potter autor: rowling", zmień na "harry+potter+inauthor:rowling"
+            let parts = query.components(separatedBy: "autor:")
+            if parts.count > 1 {
+                let authorPart = parts[1].trimmingCharacters(in: .whitespacesAndNewlines).addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+                modifiedQuery = (parts[0].trimmingCharacters(in: .whitespacesAndNewlines).addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "") + "+inauthor:" + authorPart
+            }
+        }
+        
+        // Dla Podejścia 2: Wzmocnij filtrem intitle + inauthor dla search by title/author
+        modifiedQuery = "intitle:\(modifiedQuery)+OR+inauthor:\(modifiedQuery)"
+        
+        let langParam = language == "any" ? "" : "&langRestrict=\(language)"
+        let urlString = "\(baseURL)?q=\(modifiedQuery)\(langParam)&maxResults=20&orderBy=relevance"  // Zmienione na 20
+        
+        guard let url = URL(string: urlString) else {
+            throw NSError(domain: "InvalidURL", code: 400, userInfo: nil)
+        }
+        
+        print("Debug: Fetching URL: \(urlString)")  // Debug: Jaki URL jest budowany
+        
         let (data, response) = try await URLSession.shared.data(from: url)
         
-        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-            throw NSError(domain: "HTTPError", code: (response as? HTTPURLResponse)?.statusCode ?? 500, userInfo: nil)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NSError(domain: "HTTPError", code: 500, userInfo: nil)
+        }
+        print("Debug: API response status: \(httpResponse.statusCode)")  // Debug: Czy 200, czy error (np. 403)
+        
+        guard httpResponse.statusCode == 200 else {
+            throw NSError(domain: "HTTPError", code: httpResponse.statusCode, userInfo: nil)
         }
         
         return try parseGoogleBooksResponse(data)
     }
     
     private func parseGoogleBooksResponse(_ data: Data) throws -> [Book] {
-        let decoder = JSONDecoder()
-        let response = try decoder.decode(GoogleBooksResponse.self, from: data)
+        print("Debug: Starting parsing response data (size: \(data.count) bytes)")  // Debug: Czy dochodzi do parsowania
         
-        return response.items.compactMap { item -> Book? in
+        let decoder = JSONDecoder()
+        let response = try decoder.decode(GoogleBooksResponse.self, from: data)  // Zakładam GoogleBooksResponse to Twój model, dostosuj jeśli to GoogleBooksModels.SearchResponse
+        
+        let parsedBooks = response.items.compactMap { item -> Book? in
             guard let volumeInfo = item.volumeInfo else { return nil }
             
             // Konwertujemy HTTP na HTTPS i dodajemy debugging
@@ -55,6 +84,9 @@ class DefaultNetworkService: NetworkService {
                 publishYear: extractYear(from: volumeInfo.publishedDate)
             )
         }
+        
+        print("Debug: Parsed \(parsedBooks.count) books")  // Debug: Ile książek sparsowano
+        return parsedBooks
     }
     
     private func extractYear(from dateString: String?) -> Int? {

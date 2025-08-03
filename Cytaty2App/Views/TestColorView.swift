@@ -48,10 +48,11 @@ struct TestColorView: View {
         .appBackground()
     }
 }
-
+/*
 struct TestColorView_Previews: PreviewProvider {
     static var previews: some View {
         TestColorView()
             .environmentObject(ColorSchemeService())
     }
 }
+*/

@@ -11,7 +11,8 @@ struct QuoteDetailView: View {
     let quote: Quote
     let book: Book
 
-    // Pobieranie aktualnej książki i cytatu z ViewModel
+    var onShowBook: ((Book) -> Void)? = nil
+
     private var currentBook: Book {
         return viewModel.books.first { $0.id == book.id } ?? book
     }
@@ -189,8 +190,11 @@ struct QuoteDetailView: View {
                 Divider()
 
                 Button(action: {
-                    // Programatyczna nawigacja do BookDetailView
-                    dismiss()
+                    if let onShowBook = onShowBook {
+                        onShowBook(currentBook)
+                    } else {
+                        dismiss()
+                    }
                 }) {
                     HStack {
                         if let coverURL = getCoverURLForButton() {

@@ -46,7 +46,17 @@ struct RootView: View {
                     if let tag = notification.object as? String {
                         tagToFilter = tag
                         selectedTab = .allQuotes(initialTagFilter: tag)
-                        navigationPath.removeLast(navigationPath.count) // reset path
+                        navigationPath.removeLast(navigationPath.count)
+                    }
+                }
+                // 🆕 OBSŁUGA NAWIGACJI PO DODANIU KSIĄŻKI
+                .onReceive(viewModel.$newlyAddedBook) { newBook in
+                    if let book = newBook {
+                        // Nawiguj do szczegółów nowo dodanej książki
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            navigationPath.append(AppScreen.bookDetail(book))
+                            viewModel.clearNewlyAddedBook()
+                        }
                     }
                 }
         }
@@ -84,8 +94,8 @@ struct RootView: View {
             Label("Ustawienia", systemImage: "gear").tag(AppScreen.settings)
         }
         .pickerStyle(SegmentedPickerStyle())
-        .onChange(of: selectedTab) { newValue in
-            navigationPath.removeLast(navigationPath.count) // reset path on tab change
+        .onChange(of: selectedTab) { _, newValue in
+            navigationPath.removeLast(navigationPath.count)
             if case .allQuotes = newValue {
                 tagToFilter = nil
             }
